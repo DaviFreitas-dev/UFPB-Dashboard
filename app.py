@@ -36,7 +36,7 @@ CICLO_PADRAO = {
 AMBIENTES = ["Mesa", "Transporte", "Ambos"]
 
 
-st.markdown(
+st.html(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -47,8 +47,16 @@ st.markdown(
 
     [data-testid="stAppViewContainer"] {
         background:
-            radial-gradient(circle at 85% 0%, rgba(56,189,248,.08), transparent 28%),
-            radial-gradient(circle at 0% 20%, rgba(96,165,250,.07), transparent 25%),
+            radial-gradient(
+                circle at 85% 0%,
+                rgba(56,189,248,.08),
+                transparent 28%
+            ),
+            radial-gradient(
+                circle at 0% 20%,
+                rgba(96,165,250,.07),
+                transparent 25%
+            ),
             #07111f;
     }
 
@@ -64,11 +72,14 @@ st.markdown(
 
     .hero {
         background:
-            linear-gradient(135deg, rgba(19,42,70,.98), rgba(8,24,42,.98));
+            linear-gradient(
+                135deg,
+                rgba(19,42,70,.98),
+                rgba(8,24,42,.98)
+            );
         border: 1px solid rgba(110,168,255,.14);
         border-radius: 24px;
         padding: 28px 30px;
-        margin-bottom: 18px;
         box-shadow: 0 18px 50px rgba(0,0,0,.22);
     }
 
@@ -91,16 +102,17 @@ st.markdown(
 
     .hero-subtitle {
         color: #91a4bc;
-        margin-top: 9px;
+        margin-top: 10px;
         font-size: .98rem;
+        line-height: 1.5;
     }
 
     .level-badge {
         background: rgba(56,189,248,.08);
         border: 1px solid rgba(56,189,248,.22);
         border-radius: 18px;
-        padding: 18px 20px;
-        text-align: right;
+        padding: 20px;
+        text-align: center;
     }
 
     .level-label {
@@ -113,9 +125,10 @@ st.markdown(
 
     .level-number {
         color: #f4f7fb;
-        font-size: 2rem;
+        font-size: 2.8rem;
         font-weight: 800;
-        margin: 2px 0;
+        line-height: 1;
+        margin: 7px 0;
     }
 
     .level-xp {
@@ -125,11 +138,12 @@ st.markdown(
     }
 
     .stat-card {
-        background: linear-gradient(
-            180deg,
-            rgba(14,30,49,.97),
-            rgba(10,24,41,.97)
-        );
+        background:
+            linear-gradient(
+                180deg,
+                rgba(14,30,49,.97),
+                rgba(10,24,41,.97)
+            );
         border: 1px solid rgba(110,168,255,.14);
         border-radius: 20px;
         padding: 18px;
@@ -138,7 +152,7 @@ st.markdown(
     }
 
     .stat-icon {
-        font-size: 1.2rem;
+        font-size: 1.25rem;
         margin-bottom: 8px;
     }
 
@@ -163,6 +177,13 @@ st.markdown(
         margin-top: 3px;
     }
 
+    .section-title {
+        color: #f4f7fb;
+        font-size: 1.05rem;
+        font-weight: 800;
+        margin: 8px 0 10px;
+    }
+
     .mission {
         background:
             linear-gradient(
@@ -170,28 +191,43 @@ st.markdown(
                 rgba(14,38,62,.98),
                 rgba(9,25,43,.98)
             );
-        border: 1px solid rgba(56,189,248,.16);
+        border: 1px solid rgba(56,189,248,.18);
         border-radius: 20px;
-        padding: 18px;
-        margin-bottom: 12px;
+        padding: 22px;
+        margin-bottom: 14px;
+    }
+
+    .mission-kicker {
+        color: #38bdf8;
+        font-size: .73rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .12em;
+        margin-bottom: 7px;
     }
 
     .mission-title {
         color: #f4f7fb;
-        font-size: 1.04rem;
+        font-size: 1.25rem;
         font-weight: 800;
+    }
+
+    .mission-hours {
+        color: #f4f7fb;
+        font-size: 2.2rem;
+        font-weight: 800;
+        margin-top: 8px;
     }
 
     .mission-meta {
         color: #91a4bc;
         font-size: .84rem;
-        margin-top: 4px;
+        margin-top: 5px;
     }
 
     .mission-xp {
         color: #34d399;
         font-weight: 800;
-        text-align: right;
     }
 
     .badge {
@@ -216,6 +252,7 @@ st.markdown(
     .cycle-copy {
         color: #91a4bc;
         font-size: .85rem;
+        line-height: 1.5;
     }
 
     .empty-state {
@@ -227,18 +264,37 @@ st.markdown(
         color: #91a4bc;
     }
 
-    .section-title {
-        color: #f4f7fb;
-        font-size: 1.05rem;
+    .success-card {
+        background:
+            linear-gradient(
+                135deg,
+                rgba(6,78,59,.5),
+                rgba(5,46,35,.7)
+            );
+        border: 1px solid rgba(52,211,153,.22);
+        border-radius: 20px;
+        padding: 22px;
+        margin: 15px 0;
+    }
+
+    .success-title {
+        color: #6ee7b7;
+        font-size: 1.2rem;
         font-weight: 800;
-        margin: 8px 0 10px;
+    }
+
+    .success-xp {
+        color: #f4f7fb;
+        font-size: 2rem;
+        font-weight: 800;
+        margin-top: 5px;
     }
 
     .footer {
         color: #66809c;
         text-align: center;
         font-size: .75rem;
-        padding: 18px 0 4px;
+        padding: 25px 0 4px;
     }
 
     .stButton > button {
@@ -254,18 +310,16 @@ st.markdown(
         }
 
         .hero {
-            padding: 20px;
+            padding: 21px;
             border-radius: 20px;
         }
 
         .level-badge {
-            text-align: left;
             margin-top: 12px;
         }
     }
     </style>
-    """,
-    unsafe_allow_html=True,
+    """
 )
 
 
@@ -276,16 +330,22 @@ def conectar_planilha():
         "https://www.googleapis.com/auth/drive",
     ]
 
-    creds_dict = dict(st.secrets["gsheets"])
+    creds_dict = dict(
+        st.secrets["gsheets"]
+    )
 
     creds = Credentials.from_service_account_info(
         creds_dict,
         scopes=scopes,
     )
 
-    cliente = gspread.authorize(creds)
+    cliente = gspread.authorize(
+        creds
+    )
 
-    return cliente.open("Banco_UFPB").sheet1
+    return cliente.open(
+        "Banco_UFPB"
+    ).sheet1
 
 
 planilha = conectar_planilha()
@@ -294,12 +354,12 @@ planilha = conectar_planilha()
 def salvar_dados(dados):
     texto_json = json.dumps(
         dados,
-        ensure_ascii=False,
+        ensure_ascii=False
     )
 
     planilha.update_acell(
         "A1",
-        texto_json,
+        texto_json
     )
 
 
@@ -316,98 +376,164 @@ def criar_padrao():
 
 
 def normalizar_dados(dados):
-    if not isinstance(dados, dict):
+    if not isinstance(
+        dados,
+        dict
+    ):
         return criar_padrao()
 
-    dados.setdefault("xp", 0)
-    dados.setdefault("historico_dias", {})
-    dados.setdefault("config_base", CICLO_PADRAO)
+    dados.setdefault(
+        "xp",
+        0
+    )
+
+    dados.setdefault(
+        "historico_dias",
+        {}
+    )
+
+    dados.setdefault(
+        "config_base",
+        CICLO_PADRAO
+    )
 
     dados.setdefault(
         "ciclo_atual",
         {
             mat: info["horas"]
-            for mat, info in dados["config_base"].items()
-        },
+            for mat, info in dados[
+                "config_base"
+            ].items()
+        }
     )
 
     config = {}
 
-    for mat, info in dados["config_base"].items():
+    for mat, info in dados[
+        "config_base"
+    ].items():
+
         try:
             horas = max(
                 0,
-                int(info.get("horas", 0)),
+                int(
+                    info.get(
+                        "horas",
+                        0
+                    )
+                )
             )
-        except (TypeError, ValueError):
+
+        except (
+            TypeError,
+            ValueError
+        ):
             horas = 0
 
         ambiente = info.get(
             "ambiente",
-            "Ambos",
+            "Ambos"
         )
 
         if ambiente not in AMBIENTES:
             ambiente = "Ambos"
 
-        config[str(mat)] = {
+        config[
+            str(mat)
+        ] = {
             "horas": horas,
             "ambiente": ambiente,
         }
 
-    dados["config_base"] = config
+    dados[
+        "config_base"
+    ] = config
 
     ciclo = {}
 
     for mat, info in config.items():
+
         try:
             restante = int(
-                dados["ciclo_atual"].get(
+                dados[
+                    "ciclo_atual"
+                ].get(
                     mat,
-                    info["horas"],
+                    info["horas"]
                 )
             )
-        except (TypeError, ValueError):
+
+        except (
+            TypeError,
+            ValueError
+        ):
             restante = info["horas"]
 
-        ciclo[mat] = max(
+        ciclo[
+            mat
+        ] = max(
             0,
-            min(restante, info["horas"]),
+            min(
+                restante,
+                info["horas"]
+            )
         )
 
-    dados["ciclo_atual"] = ciclo
+    dados[
+        "ciclo_atual"
+    ] = ciclo
 
     try:
-        dados["xp"] = max(
+        dados[
+            "xp"
+        ] = max(
             0,
-            int(dados["xp"]),
+            int(
+                dados["xp"]
+            )
         )
-    except (TypeError, ValueError):
-        dados["xp"] = 0
+
+    except (
+        TypeError,
+        ValueError
+    ):
+        dados[
+            "xp"
+        ] = 0
 
     historico = {}
 
     for dia, horas in dados.get(
         "historico_dias",
-        {},
+        {}
     ).items():
 
         try:
-            historico[str(dia)] = max(
+            historico[
+                str(dia)
+            ] = max(
                 0,
-                int(horas),
+                int(horas)
             )
-        except (TypeError, ValueError):
+
+        except (
+            TypeError,
+            ValueError
+        ):
             continue
 
-    dados["historico_dias"] = historico
+    dados[
+        "historico_dias"
+    ] = historico
 
     return dados
 
 
 def inicializar_dados():
     try:
-        valor = planilha.acell("A1").value
+        valor = planilha.acell(
+            "A1"
+        ).value
 
         if valor:
             return normalizar_dados(
@@ -419,18 +545,22 @@ def inicializar_dados():
 
     padrao = criar_padrao()
 
-    salvar_dados(padrao)
+    salvar_dados(
+        padrao
+    )
 
     return padrao
 
 
 def calcular_nivel(xp):
     nivel = (
-        xp // XP_POR_NIVEL
+        xp
+        // XP_POR_NIVEL
     ) + 1
 
     xp_no_nivel = (
-        xp % XP_POR_NIVEL
+        xp
+        % XP_POR_NIVEL
     )
 
     progresso = (
@@ -447,14 +577,14 @@ def calcular_nivel(xp):
         nivel,
         xp_no_nivel,
         progresso,
-        faltam,
+        faltam
     )
 
 
 def calcular_estatisticas(dados):
     historico = dados.get(
         "historico_dias",
-        {},
+        {}
     )
 
     if not historico:
@@ -477,7 +607,7 @@ def calcular_estatisticas(dados):
 
         except (
             ValueError,
-            TypeError,
+            TypeError
         ):
             continue
 
@@ -535,22 +665,73 @@ def calcular_estatisticas(dados):
     }
 
 
-def gerar_missoes(
+def sortear_missoes(
     dados,
     horas_solicitadas,
-    filtro,
+    filtro
 ):
     limite = horas_solicitadas
     rotina = {}
 
-    while limite > 0:
+    urna = []
+
+    for mat, restante in dados[
+        "ciclo_atual"
+    ].items():
+
+        if restante <= 0:
+            continue
+
+        ambiente = dados[
+            "config_base"
+        ][mat]["ambiente"]
+
+        if (
+            filtro == "Ambos"
+            or ambiente == "Ambos"
+            or ambiente == filtro
+        ):
+            urna.extend(
+                [mat] * restante
+            )
+
+    while (
+        limite > 0
+        and urna
+    ):
+        sorteada = random.choice(
+            urna
+        )
+
+        restante = dados[
+            "ciclo_atual"
+        ][sorteada]
+
+        max_h = min(
+            limite,
+            restante
+        )
+
+        horas = random.randint(
+            1,
+            max_h
+        )
+
+        rotina[
+            sorteada
+        ] = (
+            rotina.get(
+                sorteada,
+                0
+            )
+            + horas
+        )
+
+        limite -= horas
 
         urna = []
 
-        for (
-            mat,
-            restante,
-        ) in dados[
+        for mat, restante in dados[
             "ciclo_atual"
         ].items():
 
@@ -561,66 +742,60 @@ def gerar_missoes(
                 "config_base"
             ][mat]["ambiente"]
 
+            ja_sorteada = (
+                rotina.get(
+                    mat,
+                    0
+                )
+            )
+
+            disponivel = (
+                restante
+                - ja_sorteada
+            )
+
+            if disponivel <= 0:
+                continue
+
             if (
                 filtro == "Ambos"
                 or ambiente == "Ambos"
                 or ambiente == filtro
             ):
                 urna.extend(
-                    [mat] * restante
+                    [mat] * disponivel
                 )
-
-        if not urna:
-            break
-
-        sorteada = random.choice(
-            urna
-        )
-
-        max_h = min(
-            limite,
-            dados[
-                "ciclo_atual"
-            ][sorteada],
-        )
-
-        horas = random.randint(
-            1,
-            max_h,
-        )
-
-        rotina[sorteada] = (
-            rotina.get(
-                sorteada,
-                0,
-            )
-            + horas
-        )
-
-        dados[
-            "ciclo_atual"
-        ][sorteada] -= horas
-
-        limite -= horas
 
     return rotina
 
 
-def registrar_estudo(
+def concluir_missao(
     dados,
-    rotina,
+    rotina
 ):
     horas_totais = sum(
         rotina.values()
     )
 
-    if horas_totais <= 0:
-        return 0
+    for mat, horas in rotina.items():
+        dados[
+            "ciclo_atual"
+        ][mat] = max(
+            0,
+            dados[
+                "ciclo_atual"
+            ][mat]
+            - horas
+        )
 
-    dados["xp"] += (
+    ganho_xp = (
         horas_totais
         * XP_POR_HORA
     )
+
+    dados[
+        "xp"
+    ] += ganho_xp
 
     hoje = str(
         date.today()
@@ -633,7 +808,7 @@ def registrar_estudo(
             "historico_dias"
         ].get(
             hoje,
-            0,
+            0
         )
         + horas_totais
     )
@@ -642,7 +817,10 @@ def registrar_estudo(
         dados
     )
 
-    return horas_totais
+    return (
+        horas_totais,
+        ganho_xp
+    )
 
 
 dados = inicializar_dados()
@@ -671,7 +849,7 @@ restante_ciclo = sum(
 concluido_ciclo = max(
     total_ciclo
     - restante_ciclo,
-    0,
+    0
 )
 
 progresso_ciclo = (
@@ -684,11 +862,11 @@ progresso_ciclo = (
 
 col1, col2 = st.columns(
     [2.5, 1],
-    vertical_alignment="center",
+    vertical_alignment="center"
 )
 
 with col1:
-    st.markdown(
+    st.html(
         """
         <div class="hero">
             <div class="hero-kicker">
@@ -704,12 +882,11 @@ with col1:
                 e mantenha sua sequência.
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 with col2:
-    st.markdown(
+    st.html(
         f"""
         <div class="level-badge">
             <div class="level-label">
@@ -724,8 +901,7 @@ with col2:
                 {dados['xp']:,} XP
             </div>
         </div>
-        """.replace(",", "."),
-        unsafe_allow_html=True,
+        """.replace(",", ".")
     )
 
 
@@ -734,7 +910,7 @@ st.progress(
     text=(
         f"{xp_no_nivel}/{XP_POR_NIVEL} XP • "
         f"{xp_faltante} XP para o próximo nível"
-    ),
+    )
 )
 
 
@@ -742,11 +918,13 @@ stats_cols = st.columns(4)
 
 
 with stats_cols[0]:
-    st.markdown(
+    st.html(
         f"""
         <div class="stat-card">
             <div class="stat-icon">⚡</div>
-            <div class="stat-label">XP total</div>
+            <div class="stat-label">
+                XP total
+            </div>
             <div class="stat-value">
                 {dados['xp']:,}
             </div>
@@ -754,13 +932,12 @@ with stats_cols[0]:
                 +{XP_POR_HORA} XP por hora
             </div>
         </div>
-        """.replace(",", "."),
-        unsafe_allow_html=True,
+        """.replace(",", ".")
     )
 
 
 with stats_cols[1]:
-    st.markdown(
+    st.html(
         f"""
         <div class="stat-card">
             <div class="stat-icon">📚</div>
@@ -774,13 +951,12 @@ with stats_cols[1]:
                 Média de {stats['media']:.1f}h/dia
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
 with stats_cols[2]:
-    st.markdown(
+    st.html(
         f"""
         <div class="stat-card">
             <div class="stat-icon">🔥</div>
@@ -794,13 +970,12 @@ with stats_cols[2]:
                 {stats['dias_estudados']} dias registrados
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
 with stats_cols[3]:
-    st.markdown(
+    st.html(
         f"""
         <div class="stat-card">
             <div class="stat-icon">🎯</div>
@@ -814,8 +989,7 @@ with stats_cols[3]:
                 {restante_ciclo}h restantes
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
@@ -826,163 +1000,237 @@ tab_dashboard, tab_historico, tab_edital = st.tabs(
     [
         "🎯 Missões",
         "📈 Histórico",
-        "⚙️ Edital",
+        "⚙️ Edital"
     ]
 )
 
 
 with tab_dashboard:
 
+    if "missao_pendente" not in st.session_state:
+        st.session_state["missao_pendente"] = None
+
     left, right = st.columns(
         [1.15, 1],
-        gap="large",
+        gap="large"
     )
 
     with left:
 
-        st.markdown(
-            '<div class="section-title">🎯 Gerar próxima missão</div>',
-            unsafe_allow_html=True,
+        st.html(
+            """
+            <div class="section-title">
+                🎯 Gerar próxima missão
+            </div>
+            """
         )
 
-        with st.container(border=True):
-
-            modo = st.radio(
-                "Ambiente",
-                [
-                    "🔄 Qualquer ambiente",
-                    "🚌 Transporte",
-                    "🖥️ Mesa",
-                ],
-                horizontal=True,
-                label_visibility="collapsed",
-            )
-
-            horas = st.slider(
-                "Horas para esta rodada",
-                min_value=1,
-                max_value=6,
-                value=3,
-            )
-
-            gerar = st.button(
-                "🚀 SORTEAR MISSÕES",
-                type="primary",
-                use_container_width=True,
-            )
-
-        if gerar:
-
-            filtro = "Ambos"
-
-            if "Transporte" in modo:
-                filtro = "Transporte"
-
-            elif "Mesa" in modo:
-                filtro = "Mesa"
-
-            rotina = gerar_missoes(
-                dados,
-                horas,
-                filtro,
-            )
-
-            if not rotina:
-
-                st.warning(
-                    "Não encontrei horas pendentes "
-                    "para esse ambiente."
-                )
-
-            else:
-
-                horas_totais = registrar_estudo(
-                    dados,
-                    rotina,
-                )
-
-                st.session_state[
-                    "ultima_rotina"
-                ] = rotina
-
-                st.session_state[
-                    "ultimo_xp"
-                ] = (
-                    horas_totais
-                    * XP_POR_HORA
-                )
-
-                st.rerun()
-
-        if st.session_state.get(
-            "ultima_rotina"
-        ):
-
-            st.markdown(
-                '<div class="section-title">🔥 Suas missões</div>',
-                unsafe_allow_html=True,
-            )
+        if st.session_state[
+            "missao_pendente"
+        ]:
 
             rotina = st.session_state[
-                "ultima_rotina"
+                "missao_pendente"
             ]
 
-            for (
-                mat,
-                horas_missao,
-            ) in rotina.items():
+            total_horas_missao = sum(
+                rotina.values()
+            )
+
+            st.html(
+                f"""
+                <div class="mission">
+                    <div class="mission-kicker">
+                        MISSÃO ATIVA
+                    </div>
+
+                    <div class="mission-title">
+                        Sua sessão de estudo está pronta.
+                    </div>
+
+                    <div class="mission-hours">
+                        {total_horas_missao}h
+                    </div>
+
+                    <div class="mission-meta">
+                        Conclua a missão para registrar
+                        as horas e receber XP.
+                    </div>
+                </div>
+                """
+            )
+
+            for mat, horas_missao in rotina.items():
 
                 ambiente = dados[
                     "config_base"
                 ][mat]["ambiente"]
 
-                xp = (
+                xp_missao = (
                     horas_missao
                     * XP_POR_HORA
                 )
 
-                st.markdown(
+                st.html(
                     f"""
                     <div class="mission">
+                        <div class="mission-title">
+                            {mat}
+                        </div>
+
+                        <div class="mission-meta">
+                            <span class="badge">
+                                {ambiente}
+                            </span>
+                            &nbsp; • &nbsp;
+                            {horas_missao}h de foco
+                        </div>
+
                         <div style="
-                            display:flex;
-                            justify-content:space-between;
-                            gap:12px;
+                            margin-top:12px;
+                            color:#34d399;
+                            font-weight:800;
                         ">
-                            <div>
-                                <div class="mission-title">
-                                    {mat}
-                                </div>
-
-                                <div class="mission-meta">
-                                    <span class="badge">
-                                        {ambiente}
-                                    </span>
-                                    &nbsp; • &nbsp;
-                                    {horas_missao}h de foco
-                                </div>
-                            </div>
-
-                            <div class="mission-xp">
-                                +{xp} XP
-                            </div>
+                            +{xp_missao} XP ao concluir
                         </div>
                     </div>
-                    """,
-                    unsafe_allow_html=True,
+                    """
                 )
+
+            concluir = st.button(
+                "✅ CONCLUIR MISSÃO",
+                type="primary",
+                use_container_width=True
+            )
+
+            cancelar = st.button(
+                "✖️ Cancelar missão",
+                use_container_width=True
+            )
+
+            if concluir:
+
+                horas_concluidas, ganho_xp = concluir_missao(
+                    dados,
+                    rotina
+                )
+
+                st.session_state[
+                    "missao_pendente"
+                ] = None
+
+                st.session_state[
+                    "ultima_conclusao"
+                ] = {
+                    "horas": horas_concluidas,
+                    "xp": ganho_xp
+                }
+
+                st.rerun()
+
+            if cancelar:
+                st.session_state[
+                    "missao_pendente"
+                ] = None
+
+                st.rerun()
+
+        else:
+
+            with st.container(
+                border=True
+            ):
+
+                modo = st.radio(
+                    "Ambiente",
+                    [
+                        "🔄 Qualquer ambiente",
+                        "🚌 Transporte",
+                        "🖥️ Mesa"
+                    ],
+                    horizontal=True
+                )
+
+                horas = st.slider(
+                    "Horas para esta missão",
+                    min_value=1,
+                    max_value=6,
+                    value=3
+                )
+
+                gerar = st.button(
+                    "🚀 SORTEAR MISSÃO",
+                    type="primary",
+                    use_container_width=True
+                )
+
+            if gerar:
+
+                filtro = "Ambos"
+
+                if "Transporte" in modo:
+                    filtro = "Transporte"
+
+                elif "Mesa" in modo:
+                    filtro = "Mesa"
+
+                rotina = sortear_missoes(
+                    dados,
+                    horas,
+                    filtro
+                )
+
+                if not rotina:
+
+                    st.warning(
+                        "Não encontrei horas pendentes "
+                        "para esse ambiente."
+                    )
+
+                else:
+
+                    st.session_state[
+                        "missao_pendente"
+                    ] = rotina
+
+                    st.rerun()
+
+        if st.session_state.get(
+            "ultima_conclusao"
+        ):
+
+            conclusao = st.session_state[
+                "ultima_conclusao"
+            ]
+
+            st.html(
+                f"""
+                <div class="success-card">
+                    <div class="success-title">
+                        ✅ MISSÃO CONCLUÍDA!
+                    </div>
+
+                    <div class="success-xp">
+                        +{conclusao['xp']} XP
+                    </div>
+
+                    <div style="
+                        margin-top:6px;
+                        color:#a7f3d0;
+                    ">
+                        {conclusao['horas']}h registradas
+                        no seu histórico.
+                    </div>
+                </div>
+                """
+            )
 
             if st.button(
-                "🧹 Limpar missões",
+                "Fechar aviso"
             ):
                 st.session_state.pop(
-                    "ultima_rotina",
-                    None,
-                )
-
-                st.session_state.pop(
-                    "ultimo_xp",
-                    None,
+                    "ultima_conclusao",
+                    None
                 )
 
                 st.rerun()
@@ -998,14 +1246,14 @@ with tab_dashboard:
                     40,
                     50,
                     60,
-                    90,
+                    90
                 ],
-                value=50,
+                value=50
             )
 
             iniciar = st.button(
                 "▶️ Iniciar foco",
-                use_container_width=True,
+                use_container_width=True
             )
 
             if iniciar:
@@ -1015,51 +1263,53 @@ with tab_dashboard:
                 for segundos in range(
                     minutos * 60,
                     0,
-                    -1,
+                    -1
                 ):
 
                     mm, ss = divmod(
                         segundos,
-                        60,
+                        60
                     )
 
                     cronometro.metric(
                         "Tempo restante",
-                        f"{mm:02d}:{ss:02d}",
+                        f"{mm:02d}:{ss:02d}"
                     )
 
                     time.sleep(1)
 
                 cronometro.success(
-                    "Sessão concluída. "
-                    "Faça uma pausa."
+                    "Sessão concluída!"
                 )
 
                 st.balloons()
 
-
     with right:
 
-        st.markdown(
-            '<div class="section-title">📊 Progresso do ciclo</div>',
-            unsafe_allow_html=True,
+        st.html(
+            """
+            <div class="section-title">
+                📊 Progresso do ciclo
+            </div>
+            """
         )
 
-        with st.container(border=True):
+        with st.container(
+            border=True
+        ):
 
-            st.markdown(
+            st.html(
                 f"""
                 <div class="cycle-big">
                     {progresso_ciclo:.0%}
                 </div>
 
                 <div class="cycle-copy">
-                    {concluido_ciclo}h concluídas de
-                    {total_ciclo}h •
-                    {restante_ciclo}h restantes
+                    {concluido_ciclo}h concluídas
+                    de {total_ciclo}h
+                    • {restante_ciclo}h restantes
                 </div>
-                """,
-                unsafe_allow_html=True,
+                """
             )
 
             st.progress(
@@ -1077,14 +1327,14 @@ with tab_dashboard:
                         dados[
                             "ciclo_atual"
                         ].values()
-                    ),
+                    )
                 }
             )
 
             st.dataframe(
                 df_ciclo,
                 hide_index=True,
-                use_container_width=True,
+                use_container_width=True
             )
 
             if restante_ciclo == 0:
@@ -1095,7 +1345,7 @@ with tab_dashboard:
 
                 if st.button(
                     "🔄 Começar novo ciclo",
-                    use_container_width=True,
+                    use_container_width=True
                 ):
 
                     dados[
@@ -1107,7 +1357,7 @@ with tab_dashboard:
 
                         for (
                             mat,
-                            info,
+                            info
                         ) in dados[
                             "config_base"
                         ].items()
@@ -1122,9 +1372,12 @@ with tab_dashboard:
 
 with tab_historico:
 
-    st.markdown(
-        '<div class="section-title">📈 Seu histórico de batalha</div>',
-        unsafe_allow_html=True,
+    st.html(
+        """
+        <div class="section-title">
+            📈 Seu histórico de batalha
+        </div>
+        """
     )
 
     h1, h2, h3, h4 = st.columns(4)
@@ -1132,25 +1385,25 @@ with tab_historico:
     with h1:
         st.metric(
             "Horas totais",
-            f"{stats['total_horas']}h",
+            f"{stats['total_horas']}h"
         )
 
     with h2:
         st.metric(
             "Média diária",
-            f"{stats['media']:.1f}h",
+            f"{stats['media']:.1f}h"
         )
 
     with h3:
         st.metric(
             "Melhor dia",
-            f"{stats['melhor_dia']}h",
+            f"{stats['melhor_dia']}h"
         )
 
     with h4:
         st.metric(
             "Dias estudados",
-            stats["dias_estudados"],
+            stats["dias_estudados"]
         )
 
     if dados[
@@ -1165,8 +1418,8 @@ with tab_historico:
             ),
             columns=[
                 "Data",
-                "Horas",
-            ],
+                "Horas"
+            ]
         )
 
         df_hist[
@@ -1177,13 +1430,17 @@ with tab_historico:
 
         df_hist = (
             df_hist
-            .sort_values("Data")
-            .set_index("Data")
+            .sort_values(
+                "Data"
+            )
+            .set_index(
+                "Data"
+            )
         )
 
         st.bar_chart(
             df_hist,
-            y="Horas",
+            y="Horas"
         )
 
         with st.expander(
@@ -1194,12 +1451,12 @@ with tab_historico:
                 df_hist.sort_index(
                     ascending=False
                 ),
-                use_container_width=True,
+                use_container_width=True
             )
 
     else:
 
-        st.markdown(
+        st.html(
             """
             <div class="empty-state">
                 <div style="font-size:2rem;">
@@ -1215,20 +1472,22 @@ with tab_historico:
                 </div>
 
                 <div style="margin-top:5px;">
-                    Gere sua primeira missão para
-                    começar a registrar progresso.
+                    Conclua sua primeira missão
+                    para começar.
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True,
+            """
         )
 
 
 with tab_edital:
 
-    st.markdown(
-        '<div class="section-title">⚙️ Configurar ciclo base</div>',
-        unsafe_allow_html=True,
+    st.html(
+        """
+        <div class="section-title">
+            ⚙️ Configurar ciclo base
+        </div>
+        """
     )
 
     df_config = (
@@ -1236,7 +1495,7 @@ with tab_edital:
             dados[
                 "config_base"
             ],
-            orient="index",
+            orient="index"
         )
         .reset_index()
     )
@@ -1245,7 +1504,7 @@ with tab_edital:
         columns={
             "index": "Disciplina"
         },
-        inplace=True,
+        inplace=True
     )
 
     df_editado = st.data_editor(
@@ -1256,39 +1515,36 @@ with tab_edital:
         column_config={
             "Disciplina": st.column_config.TextColumn(
                 "Disciplina",
-                required=True,
+                required=True
             ),
             "horas": st.column_config.NumberColumn(
                 "Horas",
                 min_value=0,
                 max_value=100,
-                step=1,
+                step=1
             ),
             "ambiente": st.column_config.SelectboxColumn(
                 "Ambiente",
                 options=AMBIENTES,
-                required=True,
-            ),
-        },
+                required=True
+            )
+        }
     )
 
     if st.button(
         "💾 Salvar nova estratégia",
         type="primary",
-        use_container_width=True,
+        use_container_width=True
     ):
 
         nova_config = {}
 
-        for (
-            _,
-            row,
-        ) in df_editado.iterrows():
+        for _, row in df_editado.iterrows():
 
             disciplina = str(
                 row.get(
                     "Disciplina",
-                    "",
+                    ""
                 )
             ).strip()
 
@@ -1304,21 +1560,21 @@ with tab_edital:
                     int(
                         row.get(
                             "horas",
-                            0,
+                            0
                         )
-                    ),
+                    )
                 )
 
             except (
                 TypeError,
-                ValueError,
+                ValueError
             ):
                 horas_config = 0
 
             ambiente = str(
                 row.get(
                     "ambiente",
-                    "Ambos",
+                    "Ambos"
                 )
             )
 
@@ -1329,7 +1585,7 @@ with tab_edital:
                 disciplina
             ] = {
                 "horas": horas_config,
-                "ambiente": ambiente,
+                "ambiente": ambiente
             }
 
         if not nova_config:
@@ -1353,7 +1609,7 @@ with tab_edital:
 
                 for (
                     mat,
-                    info,
+                    info
                 ) in nova_config.items()
             }
 
@@ -1362,16 +1618,19 @@ with tab_edital:
             )
 
             st.success(
-                "Edital atualizado!"
+                "Edital atualizado e ciclo reiniciado!"
             )
 
             st.rerun()
 
     st.write("")
 
-    st.markdown(
-        '<div class="section-title">🔄 Reiniciar apenas o ciclo</div>',
-        unsafe_allow_html=True,
+    st.html(
+        """
+        <div class="section-title">
+            🔄 Reiniciar apenas o ciclo
+        </div>
+        """
     )
 
     with st.container(
@@ -1384,7 +1643,7 @@ with tab_edital:
 
         if st.button(
             "🔄 Reiniciar ciclo atual",
-            use_container_width=True,
+            use_container_width=True
         ):
 
             dados[
@@ -1396,7 +1655,7 @@ with tab_edital:
 
                 for (
                     mat,
-                    info,
+                    info
                 ) in dados[
                     "config_base"
                 ].items()
@@ -1414,9 +1673,12 @@ with tab_edital:
 
     st.write("")
 
-    st.markdown(
-        '<div class="section-title">🗑️ Zona de perigo</div>',
-        unsafe_allow_html=True,
+    st.html(
+        """
+        <div class="section-title">
+            🗑️ Zona de perigo
+        </div>
+        """
     )
 
     with st.container(
@@ -1429,7 +1691,7 @@ with tab_edital:
 
         if st.button(
             "🚨 Apagar tudo e voltar ao padrão",
-            use_container_width=True,
+            use_container_width=True
         ):
 
             padrao = criar_padrao()
@@ -1439,13 +1701,13 @@ with tab_edital:
             )
 
             st.session_state.pop(
-                "ultima_rotina",
-                None,
+                "missao_pendente",
+                None
             )
 
             st.session_state.pop(
-                "ultimo_xp",
-                None,
+                "ultima_conclusao",
+                None
             )
 
             st.success(
@@ -1457,11 +1719,10 @@ with tab_edital:
             st.rerun()
 
 
-st.markdown(
+st.html(
     """
     <div class="footer">
         UFPB Academy • seu ciclo, suas missões, seu progresso.
     </div>
-    """,
-    unsafe_allow_html=True,
+    """
 )
