@@ -15,8 +15,8 @@ def conectar_planilha():
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
-    creds_info = json.loads(st.secrets["GOOGLE_JSON"])
-    creds = Credentials.from_service_account_info(creds_info, scopes=scopes)
+    creds_dict = dict(st.secrets["gsheets"])
+    creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
     cliente = gspread.authorize(creds)
     return cliente.open("Banco_UFPB").sheet1
 
