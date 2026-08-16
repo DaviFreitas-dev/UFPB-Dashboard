@@ -15,16 +15,8 @@ def conectar_planilha():
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
-    creds_dict = dict(st.secrets["gsheets"])
-    
-    pk = creds_dict["private_key"]
-    if not pk.startswith("-----BEGIN PRIVATE KEY-----"):
-        pk = "-----BEGIN PRIVATE KEY-----\n" + pk.strip()
-    if not pk.endswith("-----END PRIVATE KEY-----"):
-        pk = pk.strip() + "\n-----END PRIVATE KEY-----\n"
-    creds_dict["private_key"] = pk.replace("\\n", "\n")
-
-    creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    creds_info = json.loads(st.secrets["GOOGLE_JSON"])
+    creds = Credentials.from_service_account_info(creds_info, scopes=scopes)
     cliente = gspread.authorize(creds)
     return cliente.open("Banco_UFPB").sheet1
 
