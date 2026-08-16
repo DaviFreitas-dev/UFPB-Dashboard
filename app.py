@@ -1,15 +1,36 @@
 import streamlit as st
 import random
 import json
-import os
 import pandas as pd
 import time
 from datetime import date
+import gspread
+from google.oauth2.service_account import Credentials
 
 st.set_page_config(page_title="UFPB Academy Dashboard", page_icon="🚀", layout="wide")
 
-ARQUIVO_DADOS = "banco_de_dados_ufpb.json"
+# ==========================================
+# CONEXÃO COM O GOOGLE SHEETS (BANCO DE DADOS)
+# ==========================================
+@st.cache_resource
+def conectar_planilha():
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    # Puxa os dados seguros do cofre do Streamlit
+    creds_dict = dict(st.secrets["gsheets"])
+    creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    cliente = gspread.authorize(creds)
+    
+    # Conecta na planilha pelo nome
+    return cliente.open("Banco_UFPB").sheet1
 
+planilha = conectar_planilha()
+
+# ==========================================
+# LÓGICA DE DADOS
+# ==========================================
 CICLO_PADRAO = {
     "📐 Matemática (Assaad)": {"horas": 5, "ambiente": "Mesa"},
     "📚 Linguagens (Fernanda Pessoa)": {"horas": 5, "ambiente": "Transporte"},
@@ -24,22 +45,33 @@ CICLO_PADRAO = {
 }
 
 def inicializar_dados():
-    if os.path.exists(ARQUIVO_DADOS):
-        with open(ARQUIVO_DADOS, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return {
+    try:
+        # Puxa toda a memória da Célula A1 da planilha
+        valor = planilha.acell('A1').value
+        if valor:
+            return json.loads(valor)
+    except:
+        pass # Se der erro ou estiver vazia, cria o padrão
+    
+    padrao = {
         "xp": 0,
         "historico_dias": {},
         "config_base": CICLO_PADRAO,
         "ciclo_atual": {mat: info["horas"] for mat, info in CICLO_PADRAO.items()}
     }
+    salvar_dados(padrao)
+    return padrao
 
 def salvar_dados(dados):
-    with open(ARQUIVO_DADOS, 'w', encoding='utf-8') as f:
-        json.dump(dados, f, ensure_ascii=False, indent=4)
+    # Transforma a memória em texto e injeta na Célula A1
+    texto_json = json.dumps(dados, ensure_ascii=False)
+    planilha.update_acell(1, 1, texto_json)
 
 dados = inicializar_dados()
 
+# ==========================================
+# INTERFACE E GAMIFICAÇÃO
+# ==========================================
 XP_POR_HORA = 100
 level_atual = (dados["xp"] // 1000) + 1
 xp_para_proximo = 1000 - (dados["xp"] % 1000)
@@ -117,7 +149,7 @@ with tab_dashboard:
 
         st.write("")
         with st.expander("⏱️ Abrir Timer Pomodoro"):
-            st.write("Inicie o timer para focar. O aplicativo ficará travado até o tempo acabar para evitar distrações.")
+            st.write("Inicie o timer para focar.")
             minutos = st.number_input("Minutos de foco:", min_value=1, max_value=120, value=50)
             if st.button("▶️ Iniciar Foco"):
                 cronometro = st.empty()
@@ -137,7 +169,7 @@ with tab_dashboard:
         st.dataframe(df_ciclo, hide_index=True, use_container_width=True)
         
         if sum(dados["ciclo_atual"].values()) == 0:
-            st.success("🔄 Ciclo 100% Finalizado! Pressione o botão abaixo para recomeçar.")
+            st.success("🔄 Ciclo 100% Finalizado!")
             if st.button("Reiniciar Ciclo Completo"):
                 dados["ciclo_atual"] = {mat: info["horas"] for mat, info in dados["config_base"].items()}
                 salvar_dados(dados)
@@ -149,33 +181,23 @@ with tab_estatisticas:
         df_hist = pd.DataFrame(list(dados["historico_dias"].items()), columns=["Data", "Horas Estudadas"])
         df_hist["Data"] = pd.to_datetime(df_hist["Data"])
         df_hist.set_index("Data", inplace=True)
-        
         st.bar_chart(df_hist, color="#00ff00")
     else:
-        st.info("Nenhuma hora registrada ainda. Gere suas primeiras missões para começar a gerar gráficos!")
+        st.info("Nenhuma hora registrada ainda.")
 
 with tab_config:
     st.subheader("⚙️ Editor do Edital (Ciclo Base)")
-    st.write("Edite os pesos e ambientes diretamente na tabela abaixo. **Nota:** Só altere isso se você decidir mudar sua estratégia.")
-    
     df_config = pd.DataFrame.from_dict(dados["config_base"], orient="index")
     df_config.reset_index(inplace=True)
     df_config.rename(columns={"index": "Disciplina"}, inplace=True)
     
-    df_editado = st.data_editor(
-        df_config,
-        use_container_width=True,
-        num_rows="dynamic"
-    )
+    df_editado = st.data_editor(df_config, use_container_width=True, num_rows="dynamic")
     
     if st.button("💾 Salvar Nova Estratégia", type="primary"):
         nova_config = {}
         for _, row in df_editado.iterrows():
             if row["Disciplina"]:
-                nova_config[row["Disciplina"]] = {
-                    "horas": int(row["horas"]),
-                    "ambiente": row["ambiente"]
-                }
+                nova_config[row["Disciplina"]] = {"horas": int(row["horas"]), "ambiente": row["ambiente"]}
         dados["config_base"] = nova_config
         dados["ciclo_atual"] = {mat: info["horas"] for mat, info in nova_config.items()}
         salvar_dados(dados)
@@ -184,12 +206,8 @@ with tab_config:
 
     st.markdown("---")
     st.subheader("🗑️ Zona de Perigo")
-    st.write("Isso vai apagar todo o seu histórico de gráficos, zerar seu Nível/XP e reiniciar o ciclo. **Ação irreversível.**")
-    
     if st.button("🚨 Apagar Todos os Dados e Reiniciar", use_container_width=True):
-        if os.path.exists(ARQUIVO_DADOS):
-            os.remove(ARQUIVO_DADOS)
-        
-        st.success("Dados deletados! Recarregando o sistema...")
+        planilha.update_acell(1, 1, "") # Apaga a célula A1 da nuvem
+        st.success("Banco de dados formatado! Recarregando sistema...")
         time.sleep(1.5)
         st.rerun()
