@@ -1,0 +1,250 @@
+html, body, [class*="st-"] {
+    font-family: "Inter", sans-serif;
+}
+
+[data-testid="stAppViewContainer"] {
+    background:
+        radial-gradient(circle at 90% 0%, rgba(56,189,248,.08), transparent 28%),
+        radial-gradient(circle at 0% 20%, rgba(96,165,250,.06), transparent 25%),
+        #07111f;
+}
+
+[data-testid="stHeader"] {
+    background: transparent;
+}
+
+[data-testid="stSidebar"] {
+    background: #081726;
+    border-right: 1px solid rgba(110,168,255,.12);
+}
+
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {
+    color: #dce8f5;
+}
+
+.block-container {
+    max-width: 1450px;
+    padding-top: 1.7rem;
+    padding-bottom: 3rem;
+}
+
+.app-logo {
+    color: #f4f7fb;
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin-bottom: 2px;
+}
+
+.app-logo-sub {
+    color: #38bdf8;
+    font-size: .67rem;
+    font-weight: 800;
+    letter-spacing: .14em;
+}
+
+.side-level {
+    background: rgba(56,189,248,.06);
+    border: 1px solid rgba(56,189,248,.14);
+    border-radius: 16px;
+    padding: 13px;
+    margin: 16px 0;
+}
+
+.side-level-label {
+    color: #91a4bc;
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.side-level-number {
+    color: #f4f7fb;
+    font-size: 1.55rem;
+    font-weight: 800;
+}
+
+.hero {
+    background: linear-gradient(135deg, rgba(19,42,70,.98), rgba(8,24,42,.98));
+    border: 1px solid rgba(110,168,255,.14);
+    border-radius: 24px;
+    padding: 26px 28px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.18);
+}
+
+.hero-kicker {
+    color: #38bdf8;
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.hero-title {
+    color: #f4f7fb;
+    font-size: clamp(1.7rem, 4vw, 2.7rem);
+    font-weight: 800;
+    line-height: 1.06;
+}
+
+.hero-subtitle {
+    color: #91a4bc;
+    margin-top: 8px;
+    line-height: 1.5;
+}
+
+.stat-card {
+    background: linear-gradient(180deg, rgba(14,30,49,.96), rgba(10,24,41,.96));
+    border: 1px solid rgba(110,168,255,.14);
+    border-radius: 18px;
+    padding: 17px;
+    min-height: 116px;
+}
+
+.stat-icon {
+    font-size: 1.15rem;
+}
+
+.stat-label {
+    color: #91a4bc;
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    margin-top: 5px;
+}
+
+.stat-value {
+    color: #f4f7fb;
+    font-size: 1.7rem;
+    font-weight: 800;
+    margin-top: 2px;
+}
+
+.stat-note {
+    color: #a8b7c9;
+    font-size: .73rem;
+    margin-top: 2px;
+}
+
+.section-title {
+    color: #f4f7fb;
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin: 8px 0 10px;
+}
+
+.panel {
+    background: rgba(10,24,41,.82);
+    border: 1px solid rgba(110,168,255,.13);
+    border-radius: 20px;
+    padding: 20px;
+}
+
+.mission {
+    background: linear-gradient(135deg, rgba(14,38,62,.98), rgba(9,25,43,.98));
+    border: 1px solid rgba(56,189,248,.17);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 12px;
+}
+
+.mission-kicker {
+    color: #38bdf8;
+    font-size: .7rem;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+
+.mission-title {
+    color: #f4f7fb;
+    font-size: 1.2rem;
+    font-weight: 800;
+    margin-top: 6px;
+}
+
+.mission-hours {
+    color: #f4f7fb;
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-top: 8px;
+}
+
+.mission-meta {
+    color: #91a4bc;
+    font-size: .82rem;
+    margin-top: 5px;
+}
+
+.badge {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-size: .68rem;
+    font-weight: 800;
+    background: rgba(56,189,248,.09);
+    border: 1px solid rgba(56,189,248,.17);
+    color: #9dddff;
+}
+
+.cycle-big {
+    color: #f4f7fb;
+    font-size: 2.3rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 7px;
+}
+
+.cycle-copy {
+    color: #91a4bc;
+    font-size: .85rem;
+    line-height: 1.5;
+}
+
+.achievement {
+    background: linear-gradient(180deg, rgba(14,30,49,.95), rgba(10,24,41,.95));
+    border: 1px solid rgba(110,168,255,.13);
+    border-radius: 18px;
+    padding: 18px;
+    margin-bottom: 10px;
+}
+
+.achievement-locked {
+    opacity: .45;
+}
+
+.achievement-title {
+    color: #f4f7fb;
+    font-weight: 800;
+}
+
+.achievement-desc {
+    color: #91a4bc;
+    font-size: .8rem;
+    margin-top: 4px;
+}
+
+.stButton > button {
+    border-radius: 11px;
+    font-weight: 700;
+}
+
+[data-testid="stMetric"] {
+    background: rgba(56,189,248,.04);
+    border: 1px solid rgba(56,189,248,.1);
+    border-radius: 15px;
+    padding: 13px;
+}
+
+@media (max-width: 900px) {
+    .block-container {
+        padding-top: 1rem;
+        padding-left: .8rem;
+        padding-right: .8rem;
+    }
+
+    .hero {
+        padding: 20px;
+    }
+}
