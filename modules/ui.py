@@ -80,7 +80,7 @@ def header(title, subtitle=None):
             </div>
             <div class="page-status">
                 <span class="page-status-dot"></span>
-                tudo sincronizado
+                painel ativo
             </div>
         </div>
         """
