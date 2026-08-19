@@ -83,23 +83,34 @@ def toggle(log_id, done):
     )
 
 
-def streak(habit_name):
-    completed_days = {
-        date.fromisoformat(str(row["data"]))
-        for row in records("Habitos")
-        if row["habito"] == habit_name and row["feito"] == "Sim"
-    }
+def streaks(habit_names):
+    wanted = set(habit_names)
+    completed = {name: set() for name in wanted}
 
-    if not completed_days:
-        return 0
+    for row in records("Habitos"):
+        name = row.get("habito")
+        if name not in wanted or row.get("feito") != "Sim":
+            continue
+        try:
+            completed[name].add(date.fromisoformat(str(row["data"])))
+        except (TypeError, ValueError):
+            continue
 
-    cursor = date.today()
-    if cursor not in completed_days:
-        cursor -= timedelta(days=1)
+    result = {}
+    for name, completed_days in completed.items():
+        if not completed_days:
+            result[name] = 0
+            continue
 
-    count = 0
-    while cursor in completed_days:
-        count += 1
-        cursor -= timedelta(days=1)
+        cursor = date.today()
+        if cursor not in completed_days:
+            cursor -= timedelta(days=1)
 
-    return count
+        count = 0
+        while cursor in completed_days:
+            count += 1
+            cursor -= timedelta(days=1)
+
+        result[name] = count
+
+    return result
