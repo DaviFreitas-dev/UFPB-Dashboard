@@ -45,7 +45,7 @@ def render():
         current = int(book["pagina_atual"])
         total = max(1, int(book["total_paginas"]))
         progress = min(current / total, 1.0)
-        daily_remaining = remaining_today(book)
+        daily_target = remaining_today(book)
         status = book.get("status", "Lendo")
 
         with st.container(border=True):
@@ -60,8 +60,7 @@ def render():
 
             if status == "Lendo":
                 st.info(
-                    f"Meta de hoje: até {daily_remaining} página(s) restantes "
-                    f"da sua meta diária de {book['meta_diaria']}."
+                    f"Meta sugerida para hoje: {daily_target} página(s)."
                 )
 
             page = st.number_input(
