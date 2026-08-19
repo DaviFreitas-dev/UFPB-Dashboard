@@ -47,9 +47,27 @@ def initialize_database():
     return True
 
 
+def _repair_header_if_needed(name, ws, rows):
+    """Repara uma aba antiga/malformada sem apagar os dados existentes."""
+    if not rows:
+        return rows
+
+    expected = SHEETS[name]
+    current_keys = set(rows[0].keys())
+
+    if all(column in current_keys for column in expected):
+        return rows
+
+    # Insere o cabeçalho correto acima do conteúdo atual para não perder dados.
+    ws.insert_row(expected, 1)
+    return ws.get_all_records() or []
+
+
 def records(name):
     try:
-        return get_worksheet(name).get_all_records() or []
+        ws = get_worksheet(name)
+        rows = ws.get_all_records() or []
+        return _repair_header_if_needed(name, ws, rows)
     except gspread.exceptions.APIError as error:
         st.error(f"Erro ao acessar a aba '{name}' do Google Sheets.")
         raise error
