@@ -5,12 +5,17 @@ from datetime import date
 import gspread
 import streamlit as st
 from google.oauth2.service_account import Credentials
+from gspread.http_client import BackOffHTTPClient
+from gspread.utils import numericise_all, to_records
 
 from modules.config import CICLO_PADRAO, SHEETS, XP_POR_HORA
 
 
 class SheetSchemaError(RuntimeError):
     """Raised when an existing worksheet has an unexpected header."""
+
+
+_HEADER_NOT_PROVIDED = object()
 
 
 @st.cache_resource
@@ -23,28 +28,37 @@ def connect_sheet():
         dict(st.secrets["gsheets"]),
         scopes=scopes,
     )
-    client = gspread.authorize(creds)
+    client = gspread.authorize(creds, http_client=BackOffHTTPClient)
     return client.open("Banco_UFPB")
 
 
 @st.cache_resource
+def _worksheets_by_name():
+    return {ws.title: ws for ws in connect_sheet().worksheets()}
+
+
+@st.cache_resource
 def get_worksheet(name):
-    book = connect_sheet()
-    try:
-        return book.worksheet(name)
-    except gspread.WorksheetNotFound:
+    worksheets = _worksheets_by_name()
+    ws = worksheets.get(name)
+
+    if ws is None:
+        book = connect_sheet()
         ws = book.add_worksheet(
             title=name,
             rows=1000,
             cols=max(10, len(SHEETS[name]) + 2),
         )
         ws.update([SHEETS[name]])
-        return ws
+        worksheets[name] = ws
+
+    return ws
 
 
-def _ensure_header(name, ws):
+def _ensure_header(name, ws, current=_HEADER_NOT_PROVIDED):
     expected = SHEETS[name]
-    current = ws.row_values(1)
+    if current is _HEADER_NOT_PROVIDED:
+        current = ws.row_values(1)
 
     if current == expected:
         return
@@ -71,22 +85,59 @@ def _ensure_header(name, ws):
     )
 
 
+def _read_headers(book, names):
+    ranges = []
+    for name in names:
+        escaped_name = name.replace("'", "''")
+        ranges.append(f"'{escaped_name}'!1:1")
+    response = book.values_batch_get(ranges)
+    value_ranges = response.get("valueRanges", [])
+
+    if len(value_ranges) != len(names):
+        raise RuntimeError("A API do Google Sheets retornou cabeçalhos incompletos.")
+
+    headers = {}
+    for name, value_range in zip(names, value_ranges):
+        values = value_range.get("values", [])
+        headers[name] = values[0] if values else []
+    return headers
+
+
 @st.cache_data(ttl=15, show_spinner=False)
 def _records_cached(name):
     ws = get_worksheet(name)
-    _ensure_header(name, ws)
-    return ws.get_all_records() or []
+    entire_sheet = ws.get(pad_values=True)
+
+    if entire_sheet == [[]]:
+        entire_sheet = []
+
+    current = entire_sheet[0] if entire_sheet else []
+    _ensure_header(name, ws, current=current)
+    if not entire_sheet:
+        return []
+
+    values = [
+        numericise_all(row, False, "", False, [])
+        for row in entire_sheet[1:]
+    ]
+    return to_records(current, values)
 
 
-def clear_records_cache():
-    _records_cached.clear()
+def clear_records_cache(name=None):
+    if name is None:
+        _records_cached.clear()
+    else:
+        _records_cached.clear(name)
 
 
 @st.cache_resource
 def initialize_database():
-    for name in SHEETS:
-        ws = get_worksheet(name)
-        _ensure_header(name, ws)
+    names = list(SHEETS)
+    worksheets = {name: get_worksheet(name) for name in names}
+    headers = _read_headers(connect_sheet(), names)
+
+    for name, ws in worksheets.items():
+        _ensure_header(name, ws, current=headers[name])
 
     clear_records_cache()
     migrate_legacy_data()
@@ -110,7 +161,7 @@ def replace_records(name, rows):
         [header] + rows if rows else [header],
         value_input_option="USER_ENTERED",
     )
-    clear_records_cache()
+    clear_records_cache(name)
 
 
 def append_record(name, values):
@@ -118,7 +169,7 @@ def append_record(name, values):
         values,
         value_input_option="USER_ENTERED",
     )
-    clear_records_cache()
+    clear_records_cache(name)
 
 
 def _find_record_row(name, record_id):
@@ -156,7 +207,7 @@ def update_record(name, record_id, updates):
 
     if cells:
         ws.update_cells(cells, value_input_option="USER_ENTERED")
-        clear_records_cache()
+        clear_records_cache(name)
 
     return True
 
@@ -167,7 +218,7 @@ def delete_record(name, record_id):
         return False
 
     get_worksheet(name).delete_rows(row_number)
-    clear_records_cache()
+    clear_records_cache(name)
     return True
 
 
@@ -219,7 +270,7 @@ def migrate_legacy_data():
     book = connect_sheet()
 
     try:
-        first_sheet = book.worksheets()[0]
+        first_sheet = next(iter(_worksheets_by_name().values()))
         raw = first_sheet.acell("A1").value
         legacy = json.loads(raw) if raw else {}
     except Exception:
