@@ -334,7 +334,7 @@ def render_goals_tomorrow():
             f"""
             <div class="dashboard-card">
                 <div class="progress-orb-wrap">
-                    <div class="progress-orb" style="--progress:{progress_degrees}deg">
+                    <div class="progress-orb" style="--target-progress:{progress_degrees}deg">
                         <div class="progress-orb-value">{progress_percent}%<small>semana</small></div>
                     </div>
                     <div>

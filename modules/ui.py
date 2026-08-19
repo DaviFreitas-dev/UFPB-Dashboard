@@ -9,7 +9,7 @@ from modules.database import get_xp
 def apply_css():
     css_path = Path(__file__).resolve().parent.parent / "assets" / "style.css"
     css = css_path.read_text(encoding="utf-8")
-    st.html(f"<style>{css}</style>")
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 
 def render_sidebar():
@@ -22,7 +22,7 @@ def render_sidebar():
         st.html(
             """
             <div class="brand">
-                <div class="brand-mark">N</div>
+                <div class="brand-mark"><span>N</span></div>
                 <div class="brand-name">NEXO</div>
             </div>
             """
@@ -80,7 +80,7 @@ def header(title, subtitle=None):
             </div>
             <div class="page-status">
                 <span class="page-status-dot"></span>
-                painel ativo
+                sistema ativo
             </div>
         </div>
         """
@@ -88,4 +88,4 @@ def header(title, subtitle=None):
 
 
 def section(title):
-    st.html(f'<div class="section-title">{title}</div>')
+    st.html(f'<div class="section-title"><span>{title}</span></div>')
