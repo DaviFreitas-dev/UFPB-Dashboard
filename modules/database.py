@@ -9,6 +9,10 @@ from google.oauth2.service_account import Credentials
 from modules.config import CICLO_PADRAO, SHEETS, XP_POR_HORA
 
 
+class SheetSchemaError(RuntimeError):
+    """Raised when an existing worksheet has an unexpected header."""
+
+
 @st.cache_resource
 def connect_sheet():
     scopes = [
@@ -49,9 +53,22 @@ def _ensure_header(name, ws):
         ws.update([expected])
         return
 
-    if not all(column in current for column in expected):
-        # Preserva dados antigos: coloca o cabeçalho correto acima do conteúdo.
-        ws.insert_row(expected, 1)
+    missing = [column for column in expected if column not in current]
+    unexpected = [column for column in current if column not in expected]
+
+    details = []
+    if missing:
+        details.append(f"colunas ausentes: {', '.join(missing)}")
+    if unexpected:
+        details.append(f"colunas inesperadas: {', '.join(unexpected)}")
+    if not details:
+        details.append("ordem das colunas diferente do schema esperado")
+
+    raise SheetSchemaError(
+        f"A aba '{name}' possui um cabeçalho incompatível "
+        f"({'; '.join(details)}). Nenhuma alteração foi realizada. "
+        "Faça uma cópia da planilha antes de executar uma migração explícita."
+    )
 
 
 @st.cache_data(ttl=15, show_spinner=False)
