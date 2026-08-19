@@ -2,7 +2,7 @@ import streamlit as st
 
 from modules.database import initialize_database
 from modules.ui import apply_css, render_sidebar
-from pages import (
+from views import (
     home,
     routine,
     cycle,
