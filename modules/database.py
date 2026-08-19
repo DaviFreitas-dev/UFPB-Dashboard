@@ -172,6 +172,38 @@ def append_record(name, values):
     clear_records_cache(name)
 
 
+def write_values_batch(updates):
+    """Write multiple ranges atomically and invalidate only affected caches."""
+    if not updates:
+        return
+
+    data = []
+    names = []
+    for update in updates:
+        name = update["sheet"]
+        if name not in SHEETS:
+            raise KeyError(f"Aba desconhecida: {name}")
+        escaped_name = name.replace("'", "''")
+        data.append(
+            {
+                "range": f"'{escaped_name}'!{update['range']}",
+                "majorDimension": "ROWS",
+                "values": update["values"],
+            }
+        )
+        names.append(name)
+
+    connect_sheet().values_batch_update(
+        {
+            "valueInputOption": "USER_ENTERED",
+            "data": data,
+        }
+    )
+
+    for name in dict.fromkeys(names):
+        clear_records_cache(name)
+
+
 def _find_record_row(name, record_id):
     rows = records(name)
     if not rows or "id" not in SHEETS[name]:
