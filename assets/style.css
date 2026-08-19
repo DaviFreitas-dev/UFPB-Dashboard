@@ -22,6 +22,10 @@ html, body {
     color: #dce8f5;
 }
 
+[data-testid="stSidebar"] [role="radiogroup"] label {
+    padding: .28rem .15rem;
+}
+
 .block-container {
     max-width: 1450px;
     padding-top: 1.7rem;
@@ -99,6 +103,12 @@ html, body {
     border-radius: 18px;
     padding: 17px;
     min-height: 116px;
+    transition: transform .18s ease, border-color .18s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(56,189,248,.30);
 }
 
 .stat-icon {
@@ -131,7 +141,7 @@ html, body {
     color: #f4f7fb;
     font-size: 1.05rem;
     font-weight: 800;
-    margin: 8px 0 10px;
+    margin: 14px 0 10px;
 }
 
 .panel {
@@ -228,6 +238,11 @@ html, body {
 .stButton > button {
     border-radius: 11px;
     font-weight: 700;
+    border-color: rgba(56,189,248,.20);
+}
+
+.stButton > button:hover {
+    border-color: rgba(56,189,248,.45);
 }
 
 [data-testid="stMetric"] {
@@ -235,6 +250,14 @@ html, body {
     border: 1px solid rgba(56,189,248,.1);
     border-radius: 15px;
     padding: 13px;
+}
+
+[data-testid="stProgress"] > div > div > div > div {
+    border-radius: 999px;
+}
+
+[data-testid="stVerticalBlockBorderWrapper"] {
+    border-color: rgba(110,168,255,.14) !important;
 }
 
 @media (max-width: 900px) {
@@ -246,5 +269,9 @@ html, body {
 
     .hero {
         padding: 20px;
+    }
+
+    .stat-card {
+        min-height: 102px;
     }
 }
