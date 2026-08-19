@@ -143,7 +143,7 @@ def render_top_cards(xp, level, streak, study_stats, goal):
             f"""
             <div class="dashboard-card">
                 <div class="progress-orb-wrap">
-                    <div class="progress-orb" style="--progress:{progress_degrees}deg">
+                    <div class="progress-orb" style="--target-progress:{progress_degrees}deg">
                         <div class="progress-orb-value">{progress_percent}%<small>da meta</small></div>
                     </div>
                     <div>
