@@ -1,6 +1,6 @@
 import streamlit as st
 
-from modules.habits import active_configs, add, archive, streak, today, toggle
+from modules.habits import active_configs, add, archive, streaks, today, toggle
 from modules.ui import header, section
 
 
@@ -41,9 +41,11 @@ def render():
             text=f"{done} de {len(habits)} hábitos concluídos hoje",
         )
 
+        streak_map = streaks([habit["habito"] for habit in habits])
+
         for habit in habits:
             checked = habit["feito"] == "Sim"
-            habit_streak = streak(habit["habito"])
+            habit_streak = streak_map.get(habit["habito"], 0)
             new_value = st.checkbox(
                 f"{habit['habito']}  •  🔥 {habit_streak} dia(s)",
                 value=checked,
