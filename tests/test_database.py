@@ -118,3 +118,57 @@ def test_records_use_one_sheet_read_and_validate_its_header(monkeypatch):
     assert worksheet.get_calls == [{"pad_values": True}]
     assert worksheet.updates == []
     database._records_cached.clear()
+
+
+def test_batch_writer_uses_one_request_and_clears_targeted_caches(monkeypatch):
+    class FakeBook:
+        def __init__(self):
+            self.bodies = []
+
+        def values_batch_update(self, body):
+            self.bodies.append(body)
+
+    book = FakeBook()
+    cleared = []
+    monkeypatch.setattr(database, "connect_sheet", lambda: book)
+    monkeypatch.setattr(
+        database,
+        "clear_records_cache",
+        lambda name=None: cleared.append(name),
+    )
+
+    database.write_values_batch(
+        [
+            {"sheet": "Ciclo", "range": "B2", "values": [[2]]},
+            {"sheet": "Usuario", "range": "B2", "values": [["300"]]},
+        ]
+    )
+
+    assert len(book.bodies) == 1
+    assert book.bodies[0]["valueInputOption"] == "USER_ENTERED"
+    assert [item["range"] for item in book.bodies[0]["data"]] == [
+        "'Ciclo'!B2",
+        "'Usuario'!B2",
+    ]
+    assert cleared == ["Ciclo", "Usuario"]
+
+
+def test_batch_writer_keeps_caches_when_api_request_fails(monkeypatch):
+    class FailingBook:
+        def values_batch_update(self, _body):
+            raise RuntimeError("API unavailable")
+
+    cleared = []
+    monkeypatch.setattr(database, "connect_sheet", lambda: FailingBook())
+    monkeypatch.setattr(
+        database,
+        "clear_records_cache",
+        lambda name=None: cleared.append(name),
+    )
+
+    with pytest.raises(RuntimeError, match="API unavailable"):
+        database.write_values_batch(
+            [{"sheet": "Ciclo", "range": "B2", "values": [[2]]}]
+        )
+
+    assert cleared == []

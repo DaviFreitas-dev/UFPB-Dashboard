@@ -2,9 +2,12 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from modules.config import XP_POR_HORA
-from modules.database import get_config
-from modules.studies import complete_mission, draw_mission
-from modules.study_sessions import record_study_session
+from modules.database import get_config, new_id
+from modules.studies import draw_mission
+from modules.study_sessions import (
+    MissionConsistencyError,
+    complete_study_session,
+)
 from modules.ui import header, section
 
 
@@ -177,25 +180,32 @@ def render_review(mission):
             st.error("Acertos + erros precisam ser iguais ao total.")
             return
 
-        hours, base_xp = complete_mission(mission)
-        session = record_study_session(
-            mission,
-            primary_subject,
-            topic,
-            total,
-            correct,
-            wrong,
-            note,
-        )
+        session_id = st.session_state.get("pending_mission_id") or new_id()
+        st.session_state["pending_mission_id"] = session_id
+        try:
+            session = complete_study_session(
+                session_id,
+                mission,
+                primary_subject,
+                topic,
+                total,
+                correct,
+                wrong,
+                note,
+            )
+        except (ValueError, MissionConsistencyError) as error:
+            st.error(str(error))
+            return
 
         st.session_state["pending_mission"] = None
+        st.session_state["pending_mission_id"] = None
         st.session_state["mission_review"] = None
         st.session_state["completion"] = {
-            "hours": hours,
-            "base_xp": base_xp,
+            "hours": session["hours"],
+            "base_xp": session["base_xp"],
             "bonus_xp": session["question_xp"],
-            "questions": total,
-            "correct": correct,
+            "questions": session["questions"],
+            "correct": session["correct"],
         }
         st.rerun()
 
@@ -211,6 +221,10 @@ def render():
         st.session_state["pending_mission"] = None
     if "mission_review" not in st.session_state:
         st.session_state["mission_review"] = None
+    if "pending_mission_id" not in st.session_state:
+        st.session_state["pending_mission_id"] = (
+            new_id() if st.session_state["pending_mission"] else None
+        )
 
     if st.session_state["mission_review"]:
         render_review(st.session_state["mission_review"])
@@ -256,6 +270,7 @@ def render():
         with cancel_col:
             if st.button("Cancelar", use_container_width=True):
                 st.session_state["pending_mission"] = None
+                st.session_state["pending_mission_id"] = None
                 st.session_state["mission_review"] = None
                 st.rerun()
 
@@ -278,6 +293,7 @@ def render():
                 mission = draw_mission(hours, environment)
                 if mission:
                     st.session_state["pending_mission"] = mission
+                    st.session_state["pending_mission_id"] = new_id()
                     st.session_state["mission_review"] = None
                     st.session_state.pop("completion", None)
                     st.rerun()
