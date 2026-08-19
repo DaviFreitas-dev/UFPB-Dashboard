@@ -13,52 +13,72 @@ def render_pomodoro(minutes):
     components.html(
         f"""
         <div class="timer-shell">
-            <div class="timer-label">FOCO</div>
+            <div class="timer-topline">
+                <span class="timer-dot"></span>
+                SESSÃO DE FOCO
+            </div>
             <div id="timer">{minutes:02d}:00</div>
             <div id="status">Pronto para começar</div>
             <div class="timer-actions">
-                <button onclick="startTimer()">▶ Iniciar</button>
-                <button onclick="pauseTimer()">⏸ Pausar</button>
-                <button onclick="resetTimer()">↻ Reiniciar</button>
+                <button class="primary" onclick="startTimer()">▶ Iniciar</button>
+                <button onclick="pauseTimer()">Pausar</button>
+                <button onclick="resetTimer()">Reiniciar</button>
             </div>
         </div>
 
         <style>
-            body {{ margin: 0; font-family: Inter, Arial, sans-serif; background: transparent; }}
+            * {{ box-sizing: border-box; }}
+            body {{ margin: 0; font-family: Inter, "Segoe UI", Arial, sans-serif; background: transparent; }}
             .timer-shell {{
-                background: linear-gradient(145deg, #101725, #0b101a);
-                border: 1px solid rgba(125,211,252,.18);
-                border-radius: 18px;
+                position: relative;
+                overflow: hidden;
+                background: radial-gradient(circle at 88% 10%, rgba(78,214,255,.10), transparent 30%), linear-gradient(145deg, #0e1d3f, #081229);
+                border: 1px solid rgba(104,142,211,.20);
+                border-radius: 15px;
                 padding: 28px;
                 text-align: center;
-                color: #f8fafc;
-                box-shadow: 0 18px 50px rgba(0,0,0,.20);
+                color: #f6f8ff;
+                box-shadow: 0 18px 48px rgba(0,0,0,.24);
             }}
-            .timer-label {{
-                color: #7dd3fc;
-                font-size: 11px;
-                font-weight: 800;
-                letter-spacing: .18em;
+            .timer-topline {{
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
+                color: #8194ba;
+                font-size: 10px;
+                font-weight: 850;
+                letter-spacing: .16em;
+            }}
+            .timer-dot {{
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: #4ed6ff;
+                box-shadow: 0 0 12px rgba(78,214,255,.7);
             }}
             #timer {{
-                font-size: 64px;
+                font-size: 62px;
                 line-height: 1;
-                font-weight: 800;
-                margin: 18px 0 10px;
+                font-weight: 850;
+                letter-spacing: -.05em;
+                margin: 18px 0 9px;
                 font-variant-numeric: tabular-nums;
             }}
-            #status {{ color: #94a3b8; font-size: 14px; margin-bottom: 22px; }}
-            .timer-actions {{ display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }}
+            #status {{ color: #7f90b3; font-size: 13px; margin-bottom: 22px; }}
+            .timer-actions {{ display: flex; gap: 9px; justify-content: center; flex-wrap: wrap; }}
             button {{
-                border: 1px solid rgba(125,211,252,.20);
-                background: #151e2e;
-                color: #f8fafc;
-                border-radius: 10px;
-                padding: 10px 16px;
-                font-weight: 700;
+                min-width: 96px;
+                border: 1px solid rgba(75,126,255,.24);
+                background: rgba(15,31,67,.94);
+                color: #eaf0ff;
+                border-radius: 9px;
+                padding: 10px 15px;
+                font-weight: 750;
                 cursor: pointer;
+                transition: all .15s ease;
             }}
-            button:hover {{ background: #1b2940; border-color: rgba(125,211,252,.42); }}
+            button:hover {{ background: #162c5d; border-color: rgba(78,214,255,.42); transform: translateY(-1px); }}
+            button.primary {{ background: linear-gradient(135deg, #416fff, #2957ee); color: white; box-shadow: 0 9px 24px rgba(47,98,255,.24); }}
         </style>
 
         <script>
@@ -84,7 +104,7 @@ def render_pomodoro(minutes):
                         interval = null;
                         remaining = 0;
                         draw();
-                        document.getElementById('status').textContent = '✅ Sessão concluída';
+                        document.getElementById('status').textContent = 'Sessão concluída';
                     }}
                 }}, 1000);
             }}
@@ -116,9 +136,9 @@ def render_review(mission):
     st.html(
         f"""
         <div class="question-review">
-            <div class="question-review-label">FECHAMENTO</div>
+            <div class="question-review-label">FECHAMENTO DA MISSÃO</div>
             <div class="question-review-title">Como foi a sessão?</div>
-            <div class="question-review-meta">{total_hours}h</div>
+            <div class="question-review-meta">{total_hours}h planejadas</div>
         </div>
         """
     )
@@ -126,40 +146,19 @@ def render_review(mission):
     subjects = list(mission.keys())
 
     with st.form("mission_review_form"):
-        primary_subject = st.selectbox(
-            "Disciplina principal",
-            subjects,
-        )
+        primary_subject = st.selectbox("Disciplina principal", subjects)
         topic = st.text_input(
             "Assunto estudado",
             placeholder="Ex.: Cinemática, funções, estequiometria...",
         )
 
         col_total, col_correct, col_wrong = st.columns(3)
-
         with col_total:
-            total = st.number_input(
-                "Questões feitas",
-                min_value=0,
-                step=1,
-                value=0,
-            )
-
+            total = st.number_input("Questões feitas", min_value=0, step=1, value=0)
         with col_correct:
-            correct = st.number_input(
-                "Acertos",
-                min_value=0,
-                step=1,
-                value=0,
-            )
-
+            correct = st.number_input("Acertos", min_value=0, step=1, value=0)
         with col_wrong:
-            wrong = st.number_input(
-                "Erros",
-                min_value=0,
-                step=1,
-                value=0,
-            )
+            wrong = st.number_input("Erros", min_value=0, step=1, value=0)
 
         note = st.text_area(
             "Nota rápida / o que precisa melhorar",
@@ -168,7 +167,7 @@ def render_review(mission):
         )
 
         submitted = st.form_submit_button(
-            "✅ SALVAR E CONCLUIR",
+            "Salvar e concluir",
             type="primary",
             use_container_width=True,
         )
@@ -206,11 +205,10 @@ def render_review(mission):
 
 
 def render():
-    header("Missões", "Sorteie, estude e feche a sessão.")
+    header("Missões", "Sorteie uma sessão, foque e registre o resultado.")
 
     if "pending_mission" not in st.session_state:
         st.session_state["pending_mission"] = None
-
     if "mission_review" not in st.session_state:
         st.session_state["mission_review"] = None
 
@@ -225,9 +223,9 @@ def render():
             f"""
             <div class="mission mission-active">
                 <div class="mission-kicker">MISSÃO ATIVA</div>
-                <div class="mission-title">Sessão pronta</div>
+                <div class="mission-title">Sessão em andamento</div>
                 <div class="mission-hours">{total_hours}h</div>
-                <div class="mission-meta">Finalize quando terminar.</div>
+                <div class="mission-meta">Conclua o bloco e registre seu desempenho no fechamento.</div>
             </div>
             """
         )
@@ -251,18 +249,12 @@ def render():
             )
 
         complete_col, cancel_col = st.columns([3, 1])
-
         with complete_col:
-            if st.button(
-                "✅ FINALIZAR MISSÃO",
-                type="primary",
-                use_container_width=True,
-            ):
+            if st.button("Finalizar missão", type="primary", use_container_width=True):
                 st.session_state["mission_review"] = mission
                 st.rerun()
-
         with cancel_col:
-            if st.button("✖️ Cancelar", use_container_width=True):
+            if st.button("Cancelar", use_container_width=True):
                 st.session_state["pending_mission"] = None
                 st.session_state["mission_review"] = None
                 st.rerun()
@@ -276,20 +268,14 @@ def render():
             )
             hours = st.slider("Horas", 1, 6, 3)
 
-            if st.button(
-                "◆ SORTEAR MISSÃO",
-                type="primary",
-                use_container_width=True,
-            ):
+            if st.button("Sortear missão", type="primary", use_container_width=True):
                 environment = "Ambos"
-
                 if "Transporte" in mode:
                     environment = "Transporte"
                 elif "Mesa" in mode:
                     environment = "Mesa"
 
                 mission = draw_mission(hours, environment)
-
                 if mission:
                     st.session_state["pending_mission"] = mission
                     st.session_state["mission_review"] = None
@@ -312,7 +298,7 @@ def render():
         )
 
     st.write("")
-    section("⏱️ Pomodoro")
+    section("Pomodoro")
     minutes = st.select_slider(
         "Duração",
         options=[25, 40, 50, 60, 90],

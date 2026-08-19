@@ -16,10 +16,11 @@ def render():
 
     st.html(
         f"""
-        <div class="panel">
-            <div class="cycle-big">{progress:.0%}</div>
-            <div class="cycle-copy">
-                {done}h concluídas • {remaining}h restantes
+        <div class="performance-card" style="min-height:180px">
+            <div class="performance-label">PROGRESSO DO CICLO</div>
+            <div class="performance-value">{progress:.0%}</div>
+            <div class="performance-copy">
+                {done}h concluídas • {remaining}h restantes • {total}h no ciclo
             </div>
         </div>
         """
@@ -27,14 +28,14 @@ def render():
 
     st.progress(progress)
 
-    section("📚 Matérias")
+    section("Matérias")
     st.dataframe(
         pd.DataFrame(get_cycle()),
         hide_index=True,
         use_container_width=True,
     )
 
-    if st.button("🔄 Reiniciar ciclo", use_container_width=True):
+    if st.button("Reiniciar ciclo", use_container_width=True):
         reset_cycle()
         st.success("Ciclo reiniciado!")
         st.rerun()

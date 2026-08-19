@@ -22,7 +22,7 @@ def render_sidebar():
         st.html(
             """
             <div class="brand">
-                <div class="brand-mark">◆</div>
+                <div class="brand-mark">N</div>
                 <div class="brand-name">NEXO</div>
             </div>
             """
@@ -65,16 +65,23 @@ def render_sidebar():
 
 def header(title, subtitle=None):
     subtitle_html = (
-        f'<div class="hero-subtitle">{subtitle}</div>'
+        f'<div class="page-subtitle">{subtitle}</div>'
         if subtitle
         else ""
     )
 
     st.html(
         f"""
-        <div class="hero">
-            <div class="hero-title">{title}</div>
-            {subtitle_html}
+        <div class="page-head">
+            <div>
+                <div class="page-eyebrow">NEXO</div>
+                <div class="page-title">{title}</div>
+                {subtitle_html}
+            </div>
+            <div class="page-status">
+                <span class="page-status-dot"></span>
+                painel ativo
+            </div>
         </div>
         """
     )
