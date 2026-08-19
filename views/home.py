@@ -2,19 +2,27 @@ import streamlit as st
 
 from modules.activity import add as add_activity
 from modules.activity import today as activities_today
+from modules.database import get_xp
 from modules.habits import today as habits_today
 from modules.reading import all_books
 from modules.routine import today_records as routine_today
 from modules.studies import calculate_level, stats
 from modules.tasks import today_records as tasks_today
-from modules.database import get_xp
+from modules.tasks import toggle as toggle_task
 from modules.ui import header, section
 
 
 def render():
     xp = get_xp()
-    level, _, progress, missing = calculate_level(xp)
-    s = stats()
+    level, _, _, _ = calculate_level(xp)
+    study_stats = stats()
+    books = all_books()
+    habits = habits_today()
+    activities = activities_today()
+    tasks = tasks_today()
+    routine = routine_today()
+
+    habit_done = sum(habit["feito"] == "Sim" for habit in habits)
 
     header(
         "Hoje",
@@ -22,11 +30,10 @@ def render():
     )
 
     cols = st.columns(4)
-
     cards = [
-        ("📚", "Estudos", f"{s['hours']}h", "total acumulado"),
-        ("📖", "Leitura", str(len(all_books())), "livros cadastrados"),
-        ("🔥", "Hábitos", f"{sum(h['feito'] == 'Sim' for h in habits_today())}/{len(habits_today())}", "concluídos hoje"),
+        ("📚", "Estudos", f"{study_stats['hours']}h", "total acumulado"),
+        ("📖", "Leitura", str(len(books)), "livros cadastrados"),
+        ("🔥", "Hábitos", f"{habit_done}/{len(habits)}", "concluídos hoje"),
         ("⚡", "XP", f"{xp:,}".replace(",", "."), f"Nível {level}"),
     ]
 
@@ -48,8 +55,6 @@ def render():
 
     with left:
         section("🎯 Prioridades de hoje")
-        tasks = tasks_today()
-
         if not tasks:
             st.info("Nenhuma tarefa para hoje.")
         else:
@@ -60,24 +65,21 @@ def render():
                     value=checked,
                     key=f"home_task_{task['id']}",
                 )
-
                 if new_value != checked:
-                    from modules.tasks import toggle
-                    toggle(task["id"], new_value)
+                    toggle_task(task["id"], new_value)
                     st.rerun()
 
         section("📅 Próximos horários")
-        routine = routine_today()
-
         if not routine:
             st.info("Sua rotina de hoje está vazia.")
         else:
             for item in sorted(routine, key=lambda x: x["hora"]):
-                st.write(f"**{item['hora']}** — {item['atividade']}")
+                status = "✅" if item["status"] == "Concluída" else "•"
+                st.write(f"{status} **{item['hora']}** — {item['atividade']}")
 
     with right:
         section("📖 Leitura atual")
-        current = [book for book in all_books() if book["status"] == "Lendo"]
+        current = [book for book in books if book["status"] == "Lendo"]
 
         if current:
             book = current[0]
@@ -88,15 +90,9 @@ def render():
             st.html(
                 f"""
                 <div class="panel">
-                    <div style="color:#f4f7fb;font-weight:800;">
-                        {book['titulo']}
-                    </div>
-                    <div style="color:#91a4bc;font-size:.8rem;margin-top:4px;">
-                        {book['autor']}
-                    </div>
-                    <div style="margin-top:14px;color:#f4f7fb;">
-                        Página {current_page} de {total_pages}
-                    </div>
+                    <div style="color:#f4f7fb;font-weight:800;">{book['titulo']}</div>
+                    <div style="color:#91a4bc;font-size:.8rem;margin-top:4px;">{book['autor']}</div>
+                    <div style="margin-top:14px;color:#f4f7fb;">Página {current_page} de {total_pages}</div>
                 </div>
                 """
             )
@@ -105,10 +101,9 @@ def render():
             st.info("Você ainda não definiu uma leitura atual.")
 
         section("🏋️ Atividade de hoje")
-        if activities_today():
-            for item in activities_today():
+        if activities:
+            for item in activities:
                 st.success(f"✅ {item['tipo']}")
-        else:
-            if st.button("✅ Marcar treino", use_container_width=True):
-                add_activity("Treino")
-                st.rerun()
+        elif st.button("✅ Marcar treino", use_container_width=True):
+            add_activity("Treino")
+            st.rerun()

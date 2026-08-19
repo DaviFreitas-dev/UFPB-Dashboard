@@ -2,12 +2,7 @@ import pandas as pd
 import streamlit as st
 
 from modules.config import AMBIENTES
-from modules.database import (
-    get_config,
-    reset_cycle,
-    reset_progress,
-    update_user_config,
-)
+from modules.database import get_config, reset_cycle, reset_progress, update_user_config
 from modules.ui import header, section
 
 
@@ -18,7 +13,6 @@ def render():
     )
 
     section("🎯 Edital")
-
     df = pd.DataFrame(get_config())
 
     edited = st.data_editor(
@@ -27,10 +21,7 @@ def render():
         use_container_width=True,
         num_rows="dynamic",
         column_config={
-            "disciplina": st.column_config.TextColumn(
-                "Disciplina",
-                required=True,
-            ),
+            "disciplina": st.column_config.TextColumn("Disciplina", required=True),
             "horas": st.column_config.NumberColumn(
                 "Horas",
                 min_value=0,
@@ -45,25 +36,30 @@ def render():
         },
     )
 
-    if st.button(
-        "💾 Salvar edital",
-        type="primary",
-        use_container_width=True,
-    ):
+    if st.button("💾 Salvar edital", type="primary", use_container_width=True):
         rows = []
+        invalid_row = False
 
         for _, row in edited.iterrows():
-            discipline = str(row["disciplina"]).strip()
-            if not discipline:
+            discipline = str(row.get("disciplina", "")).strip()
+            if not discipline or discipline.lower() == "nan":
                 continue
 
-            rows.append([
-                discipline,
-                int(row["horas"]),
-                row["ambiente"] if row["ambiente"] in AMBIENTES else "Ambos",
-            ])
+            try:
+                hours = int(row.get("horas", 0))
+            except (TypeError, ValueError):
+                invalid_row = True
+                break
 
-        if not rows:
+            environment = row.get("ambiente", "Ambos")
+            if environment not in AMBIENTES:
+                environment = "Ambos"
+
+            rows.append([discipline, hours, environment])
+
+        if invalid_row:
+            st.error("Revise as horas: há um valor inválido na tabela.")
+        elif not rows:
             st.error("Adicione pelo menos uma disciplina.")
         else:
             update_user_config(rows)
@@ -73,10 +69,7 @@ def render():
     st.write("")
     section("🔄 Ciclo")
 
-    if st.button(
-        "🔄 Reiniciar ciclo",
-        use_container_width=True,
-    ):
+    if st.button("🔄 Reiniciar ciclo", use_container_width=True):
         reset_cycle()
         st.success("Ciclo reiniciado!")
         st.rerun()
@@ -85,18 +78,10 @@ def render():
     section("🗑️ Zona de perigo")
 
     with st.container(border=True):
-        st.warning(
-            "Isso apaga XP e histórico. O edital continua salvo."
-        )
+        st.warning("Isso apaga XP e histórico. O edital continua salvo.")
+        confirm = st.checkbox("Eu realmente quero apagar meu progresso.")
 
-        confirm = st.checkbox(
-            "Eu realmente quero apagar meu progresso."
-        )
-
-        if st.button(
-            "🚨 Apagar progresso",
-            use_container_width=True,
-        ):
+        if st.button("🚨 Apagar progresso", use_container_width=True):
             if confirm:
                 reset_progress()
                 st.success("Progresso apagado.")

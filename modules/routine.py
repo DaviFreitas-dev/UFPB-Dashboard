@@ -1,36 +1,16 @@
 from datetime import date
 
-from modules.database import new_id, records, replace_records
+from modules.database import append_record, new_id, records, update_record
 
 
 def today_records():
-    return [
-        row for row in records("Rotina")
-        if row["data"] == str(date.today())
-    ]
+    today = str(date.today())
+    return [row for row in records("Rotina") if row["data"] == today]
 
 
 def add(activity, time_text):
-    rows = records("Rotina")
-    rows.append({
-        "id": new_id(),
-        "data": str(date.today()),
-        "hora": time_text,
-        "atividade": activity,
-        "status": "Pendente",
-    })
-    replace_records(
-        "Rotina",
-        [[r["id"], r["data"], r["hora"], r["atividade"], r["status"]] for r in rows],
-    )
+    append_record("Rotina", [new_id(), str(date.today()), time_text, activity, "Pendente"])
 
 
 def toggle(item_id, done):
-    rows = records("Rotina")
-    for row in rows:
-        if row["id"] == item_id:
-            row["status"] = "Concluída" if done else "Pendente"
-    replace_records(
-        "Rotina",
-        [[r["id"], r["data"], r["hora"], r["atividade"], r["status"]] for r in rows],
-    )
+    update_record("Rotina", item_id, {"status": "Concluída" if done else "Pendente"})
