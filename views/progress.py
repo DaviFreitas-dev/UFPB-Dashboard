@@ -19,7 +19,6 @@ def render_question_chart(question_stats):
         "mark": {
             "type": "arc",
             "outerRadius": 122,
-            "innerRadius": 42,
             "stroke": "#0b1019",
             "strokeWidth": 2,
         },
