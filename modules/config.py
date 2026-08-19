@@ -21,6 +21,14 @@ SHEETS = {
     "Config": ["disciplina", "horas", "ambiente"],
     "Ciclo": ["disciplina", "restantes"],
     "Historico": ["data", "horas", "xp"],
+    "Questoes": [
+        "id",
+        "data",
+        "disciplinas",
+        "feitas",
+        "acertos",
+        "erros",
+    ],
     "Rotina": ["id", "data", "hora", "atividade", "status"],
     "Tarefas": ["id", "data", "tarefa", "categoria", "status"],
     "Leitura": [

@@ -3,6 +3,7 @@ import streamlit.components.v1 as components
 
 from modules.config import XP_POR_HORA
 from modules.database import get_config
+from modules.questions import record_session
 from modules.studies import complete_mission, draw_mission
 from modules.ui import header, section
 
@@ -12,7 +13,7 @@ def render_pomodoro(minutes):
     components.html(
         f"""
         <div class="timer-shell">
-            <div class="timer-label">SESSÃO DE FOCO</div>
+            <div class="timer-label">FOCO</div>
             <div id="timer">{minutes:02d}:00</div>
             <div id="status">Pronto para começar</div>
             <div class="timer-actions">
@@ -25,18 +26,19 @@ def render_pomodoro(minutes):
         <style>
             body {{ margin: 0; font-family: Inter, Arial, sans-serif; background: transparent; }}
             .timer-shell {{
-                background: linear-gradient(135deg, #0e263e, #09192b);
-                border: 1px solid rgba(56,189,248,.22);
-                border-radius: 20px;
+                background: linear-gradient(145deg, #101725, #0b101a);
+                border: 1px solid rgba(125,211,252,.18);
+                border-radius: 18px;
                 padding: 28px;
                 text-align: center;
-                color: #f4f7fb;
+                color: #f8fafc;
+                box-shadow: 0 18px 50px rgba(0,0,0,.20);
             }}
             .timer-label {{
-                color: #38bdf8;
+                color: #7dd3fc;
                 font-size: 11px;
                 font-weight: 800;
-                letter-spacing: .16em;
+                letter-spacing: .18em;
             }}
             #timer {{
                 font-size: 64px;
@@ -45,18 +47,18 @@ def render_pomodoro(minutes):
                 margin: 18px 0 10px;
                 font-variant-numeric: tabular-nums;
             }}
-            #status {{ color: #91a4bc; font-size: 14px; margin-bottom: 22px; }}
+            #status {{ color: #94a3b8; font-size: 14px; margin-bottom: 22px; }}
             .timer-actions {{ display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }}
             button {{
-                border: 1px solid rgba(56,189,248,.25);
-                background: #102c47;
-                color: #f4f7fb;
+                border: 1px solid rgba(125,211,252,.20);
+                background: #151e2e;
+                color: #f8fafc;
                 border-radius: 10px;
                 padding: 10px 16px;
                 font-weight: 700;
                 cursor: pointer;
             }}
-            button:hover {{ background: #163958; }}
+            button:hover {{ background: #1b2940; border-color: rgba(125,211,252,.42); }}
         </style>
 
         <script>
@@ -82,7 +84,7 @@ def render_pomodoro(minutes):
                         interval = null;
                         remaining = 0;
                         draw();
-                        document.getElementById('status').textContent = '✅ Sessão concluída!';
+                        document.getElementById('status').textContent = '✅ Sessão concluída';
                     }}
                 }}, 1000);
             }}
@@ -108,28 +110,103 @@ def render_pomodoro(minutes):
     )
 
 
+def render_review(mission):
+    total_hours = sum(mission.values())
+    subjects = " • ".join(mission.keys())
+
+    st.html(
+        f"""
+        <div class="question-review">
+            <div class="question-review-label">FECHAMENTO DA MISSÃO</div>
+            <div class="question-review-title">Como foi sua prática?</div>
+            <div class="question-review-meta">{total_hours}h • {subjects}</div>
+        </div>
+        """
+    )
+
+    with st.form("mission_review_form"):
+        col_total, col_correct, col_wrong = st.columns(3)
+
+        with col_total:
+            total = st.number_input(
+                "Questões feitas",
+                min_value=0,
+                step=1,
+                value=0,
+            )
+
+        with col_correct:
+            correct = st.number_input(
+                "Acertos",
+                min_value=0,
+                step=1,
+                value=0,
+            )
+
+        with col_wrong:
+            wrong = st.number_input(
+                "Erros",
+                min_value=0,
+                step=1,
+                value=0,
+            )
+
+        submitted = st.form_submit_button(
+            "✅ SALVAR E CONCLUIR",
+            type="primary",
+            use_container_width=True,
+        )
+
+    if submitted:
+        if correct + wrong != total:
+            st.error("Acertos + erros precisam ser iguais ao total de questões feitas.")
+            return
+
+        hours, xp = complete_mission(mission)
+        record_session(mission, total, correct, wrong)
+
+        st.session_state["pending_mission"] = None
+        st.session_state["mission_review"] = None
+        st.session_state["completion"] = {
+            "hours": hours,
+            "xp": xp,
+            "questions": total,
+            "correct": correct,
+            "wrong": wrong,
+        }
+        st.rerun()
+
+    if st.button("← Voltar para a missão", use_container_width=True):
+        st.session_state["mission_review"] = None
+        st.rerun()
+
+
 def render():
     header(
         "Missões",
-        "Transforme seu ciclo em sessões de estudo concretas.",
+        "Sorteie uma sessão, estude e registre o resultado no final.",
     )
 
     if "pending_mission" not in st.session_state:
         st.session_state["pending_mission"] = None
 
-    if st.session_state["pending_mission"]:
+    if "mission_review" not in st.session_state:
+        st.session_state["mission_review"] = None
+
+    if st.session_state["mission_review"]:
+        render_review(st.session_state["mission_review"])
+
+    elif st.session_state["pending_mission"]:
         mission = st.session_state["pending_mission"]
         total_hours = sum(mission.values())
 
         st.html(
             f"""
-            <div class="mission">
+            <div class="mission mission-active">
                 <div class="mission-kicker">MISSÃO ATIVA</div>
-                <div class="mission-title">Sua missão está pronta.</div>
+                <div class="mission-title">Sessão pronta</div>
                 <div class="mission-hours">{total_hours}h</div>
-                <div class="mission-meta">
-                    Estude primeiro. Só depois conclua para receber XP.
-                </div>
+                <div class="mission-meta">Conclua quando terminar o estudo.</div>
             </div>
             """
         )
@@ -146,30 +223,30 @@ def render():
                     <div class="mission-title">{subject}</div>
                     <div class="mission-meta">
                         <span class="badge">{config.get(subject, 'Ambos')}</span>
-                        • {hours}h • +{hours * XP_POR_HORA} XP
+                        <span class="mission-separator">•</span>
+                        {hours}h
+                        <span class="mission-separator">•</span>
+                        +{hours * XP_POR_HORA} XP
                     </div>
                 </div>
                 """
             )
 
         complete_col, cancel_col = st.columns([3, 1])
+
         with complete_col:
             if st.button(
-                "✅ CONCLUIR MISSÃO",
+                "✅ FINALIZAR MISSÃO",
                 type="primary",
                 use_container_width=True,
             ):
-                hours, xp = complete_mission(mission)
-                st.session_state["pending_mission"] = None
-                st.session_state["completion"] = {
-                    "hours": hours,
-                    "xp": xp,
-                }
+                st.session_state["mission_review"] = mission
                 st.rerun()
 
         with cancel_col:
             if st.button("✖️ Cancelar", use_container_width=True):
                 st.session_state["pending_mission"] = None
+                st.session_state["mission_review"] = None
                 st.rerun()
 
     else:
@@ -182,7 +259,7 @@ def render():
             hours = st.slider("Horas", 1, 6, 3)
 
             if st.button(
-                "🚀 SORTEAR MISSÃO",
+                "◆ SORTEAR MISSÃO",
                 type="primary",
                 use_container_width=True,
             ):
@@ -193,8 +270,10 @@ def render():
                     environment = "Mesa"
 
                 mission = draw_mission(hours, environment)
+
                 if mission:
                     st.session_state["pending_mission"] = mission
+                    st.session_state["mission_review"] = None
                     st.session_state.pop("completion", None)
                     st.rerun()
                 else:
@@ -202,8 +281,13 @@ def render():
 
     if st.session_state.get("completion"):
         completion = st.session_state["completion"]
+        total = completion["questions"]
+        correct = completion["correct"]
+        accuracy = (correct / total * 100) if total else 0
+
         st.success(
-            f"✅ Missão concluída: {completion['hours']}h e +{completion['xp']} XP!"
+            f"Missão concluída: {completion['hours']}h • +{completion['xp']} XP • "
+            f"{total} questões • {accuracy:.0f}% de acerto"
         )
 
     st.write("")
@@ -214,6 +298,3 @@ def render():
         value=50,
     )
     render_pomodoro(minutes)
-    st.caption(
-        "O cronômetro roda no navegador, então não bloqueia mais o Streamlit."
-    )

@@ -3,22 +3,22 @@ import streamlit as st
 from modules.database import initialize_database
 from modules.ui import apply_css, render_sidebar
 from views import (
-    home,
-    routine,
-    cycle,
-    missions,
-    reading,
-    tasks,
-    habits,
-    activity,
-    progress,
     achievements,
+    activity,
+    cycle,
+    habits,
+    home,
+    missions,
+    progress,
+    reading,
+    routine,
     settings,
+    tasks,
 )
 
 st.set_page_config(
-    page_title="UFPB Academy",
-    page_icon="🚀",
+    page_title="Nexo",
+    page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded",
 )
