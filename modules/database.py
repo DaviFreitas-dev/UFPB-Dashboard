@@ -5,12 +5,7 @@ import gspread
 import streamlit as st
 from google.oauth2.service_account import Credentials
 
-from modules.config import (
-    AMBIENTES,
-    CICLO_PADRAO,
-    SHEETS,
-    XP_POR_HORA,
-)
+from modules.config import CICLO_PADRAO, SHEETS, XP_POR_HORA
 
 
 @st.cache_resource
@@ -19,44 +14,71 @@ def connect_sheet():
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive",
     ]
+
     creds = Credentials.from_service_account_info(
         dict(st.secrets["gsheets"]),
         scopes=scopes,
     )
+
     client = gspread.authorize(creds)
+
     return client.open("Banco_UFPB")
 
 
+@st.cache_resource
 def get_worksheet(name):
     book = connect_sheet()
+
     try:
-        ws = book.worksheet(name)
+        return book.worksheet(name)
+
     except gspread.WorksheetNotFound:
         ws = book.add_worksheet(
             title=name,
             rows=1000,
             cols=max(10, len(SHEETS[name]) + 2),
         )
-    if not ws.get_all_values():
+
         ws.update([SHEETS[name]])
-    return ws
+
+        return ws
 
 
 def initialize_database():
     for name in SHEETS:
         get_worksheet(name)
+
     migrate_legacy_data()
+    ensure_defaults()
 
 
 def records(name):
-    values = get_worksheet(name).get_all_records()
-    return values or []
+    try:
+        return get_worksheet(name).get_all_records() or []
+
+    except gspread.exceptions.APIError as error:
+        st.error(
+            f"Erro ao acessar a aba '{name}' do Google Sheets."
+        )
+        raise error
 
 
 def replace_records(name, rows):
     ws = get_worksheet(name)
+    header = SHEETS[name]
+
     ws.clear()
-    ws.update([SHEETS[name]] + rows)
+
+    if rows:
+        ws.update(
+            [header] + rows,
+            value_input_option="USER_ENTERED",
+        )
+    else:
+        ws.update(
+            [header],
+            value_input_option="USER_ENTERED",
+        )
 
 
 def new_id():
@@ -67,6 +89,7 @@ def get_user(key, default=None):
     for row in records("Usuario"):
         if str(row.get("chave")) == key:
             return row.get("valor", default)
+
     return default
 
 
@@ -78,25 +101,44 @@ def set_user(key, value):
         if str(row.get("chave")) == key:
             row["valor"] = str(value)
             found = True
+            break
 
     if not found:
-        rows.append({"chave": key, "valor": str(value)})
+        rows.append(
+            {
+                "chave": key,
+                "valor": str(value),
+            }
+        )
 
     replace_records(
         "Usuario",
-        [[row["chave"], row["valor"]] for row in rows],
+        [
+            [
+                row["chave"],
+                row["valor"],
+            ]
+            for row in rows
+        ],
     )
 
 
 def get_xp():
     try:
-        return max(0, int(get_user("xp", 0)))
+        return max(
+            0,
+            int(get_user("xp", 0)),
+        )
+
     except (TypeError, ValueError):
         return 0
 
 
 def set_xp(value):
-    set_user("xp", max(0, int(value)))
+    set_user(
+        "xp",
+        max(0, int(value)),
+    )
 
 
 def migrate_legacy_data():
@@ -104,87 +146,170 @@ def migrate_legacy_data():
         return
 
     book = connect_sheet()
+
     try:
-        first = book.worksheets()[0]
-        raw = first.acell("A1").value
-        legacy = json.loads(raw) if raw else {}
+        first_sheet = book.worksheets()[0]
+        raw = first_sheet.acell("A1").value
+
+        legacy = (
+            json.loads(raw)
+            if raw
+            else {}
+        )
+
     except Exception:
         legacy = {}
 
-    if not isinstance(legacy, dict) or "xp" not in legacy:
-        set_user("schema_version", "2")
-        ensure_defaults()
+    if (
+        not isinstance(legacy, dict)
+        or "xp" not in legacy
+    ):
+        set_user(
+            "schema_version",
+            "2",
+        )
+
         return
 
-    set_user("xp", legacy.get("xp", 0))
+    set_user(
+        "xp",
+        legacy.get("xp", 0),
+    )
 
-    config = legacy.get("config_base", CICLO_PADRAO)
+    config = legacy.get(
+        "config_base",
+        CICLO_PADRAO,
+    )
+
     cycle = legacy.get(
         "ciclo_atual",
-        {mat: info["horas"] for mat, info in config.items()},
+        {
+            subject: info["horas"]
+            for subject, info in config.items()
+        },
     )
-    history = legacy.get("historico_dias", {})
+
+    history = legacy.get(
+        "historico_dias",
+        {},
+    )
 
     replace_records(
         "Config",
-        [[mat, info["horas"], info["ambiente"]] for mat, info in config.items()],
+        [
+            [
+                subject,
+                info["horas"],
+                info["ambiente"],
+            ]
+            for subject, info in config.items()
+        ],
     )
 
     replace_records(
         "Ciclo",
-        [[mat, horas] for mat, horas in cycle.items()],
+        [
+            [
+                subject,
+                hours,
+            ]
+            for subject, hours in cycle.items()
+        ],
     )
 
     replace_records(
         "Historico",
-        [[day, hours, int(hours) * XP_POR_HORA] for day, hours in history.items()],
+        [
+            [
+                day,
+                hours,
+                int(hours) * XP_POR_HORA,
+            ]
+            for day, hours in history.items()
+        ],
     )
 
-    set_user("schema_version", "2")
-    ensure_defaults()
+    set_user(
+        "schema_version",
+        "2",
+    )
 
 
 def ensure_defaults():
     if not records("Config"):
         replace_records(
             "Config",
-            [[mat, info["horas"], info["ambiente"]] for mat, info in CICLO_PADRAO.items()],
+            [
+                [
+                    subject,
+                    info["horas"],
+                    info["ambiente"],
+                ]
+                for subject, info
+                in CICLO_PADRAO.items()
+            ],
         )
 
     if not records("Ciclo"):
+        config = records("Config")
+
         replace_records(
             "Ciclo",
-            [[row["disciplina"], int(row["horas"])] for row in records("Config")],
+            [
+                [
+                    row["disciplina"],
+                    int(row["horas"]),
+                ]
+                for row in config
+            ],
         )
 
 
 def get_config():
     rows = records("Config")
+
     if not rows:
         ensure_defaults()
         rows = records("Config")
+
     return rows
 
 
 def get_cycle():
     rows = records("Ciclo")
+
     if not rows:
         reset_cycle()
         rows = records("Ciclo")
+
     return rows
 
 
 def reset_cycle():
+    config = get_config()
+
     replace_records(
         "Ciclo",
-        [[row["disciplina"], int(row["horas"])] for row in get_config()],
+        [
+            [
+                row["disciplina"],
+                int(row["horas"]),
+            ]
+            for row in config
+        ],
     )
 
 
 def update_cycle(values):
     replace_records(
         "Ciclo",
-        [[row["disciplina"], int(row["restantes"])] for row in values],
+        [
+            [
+                row["disciplina"],
+                int(row["restantes"]),
+            ]
+            for row in values
+        ],
     )
 
 
@@ -193,21 +318,43 @@ def add_history(hours, xp):
 
     today = str(date.today())
     rows = records("Historico")
+
     found = False
 
     for row in rows:
         if row["data"] == today:
-            row["horas"] = int(row["horas"]) + hours
-            row["xp"] = int(row["xp"]) + xp
+            row["horas"] = (
+                int(row["horas"])
+                + int(hours)
+            )
+
+            row["xp"] = (
+                int(row["xp"])
+                + int(xp)
+            )
+
             found = True
             break
 
     if not found:
-        rows.append({"data": today, "horas": hours, "xp": xp})
+        rows.append(
+            {
+                "data": today,
+                "horas": int(hours),
+                "xp": int(xp),
+            }
+        )
 
     replace_records(
         "Historico",
-        [[row["data"], row["horas"], row["xp"]] for row in rows],
+        [
+            [
+                row["data"],
+                row["horas"],
+                row["xp"],
+            ]
+            for row in rows
+        ],
     )
 
 
@@ -216,11 +363,20 @@ def get_history():
 
 
 def update_user_config(rows):
-    replace_records("Config", rows)
+    replace_records(
+        "Config",
+        rows,
+    )
+
     reset_cycle()
 
 
 def reset_progress():
     set_xp(0)
-    replace_records("Historico", [])
+
+    replace_records(
+        "Historico",
+        [],
+    )
+
     reset_cycle()
