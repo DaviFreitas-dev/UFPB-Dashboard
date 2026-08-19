@@ -24,51 +24,63 @@ def render_question_chart(question_stats):
     spec = {
         "mark": {
             "type": "arc",
-            "outerRadius": 122,
-            "innerRadius": 42,
-            "stroke": "#0b1019",
-            "strokeWidth": 2,
+            "outerRadius": 118,
+            "innerRadius": 70,
+            "stroke": "#081126",
+            "strokeWidth": 3,
+            "cornerRadius": 5,
         },
         "encoding": {
             "theta": {
                 "field": "quantidade",
                 "type": "quantitative",
-                "stack": True,
             },
             "color": {
                 "field": "resultado",
                 "type": "nominal",
                 "scale": {
                     "domain": ["Acertos", "Erros"],
-                    "range": ["#34d399", "#fb7185"],
+                    "range": ["#3ed9a4", "#ff668f"],
                 },
                 "legend": {
                     "title": None,
                     "orient": "bottom",
-                    "labelColor": "#cbd5e1",
+                    "labelColor": "#8392b3",
                 },
             },
             "tooltip": [
-                {
-                    "field": "resultado",
-                    "type": "nominal",
-                    "title": "Resultado",
-                },
-                {
-                    "field": "quantidade",
-                    "type": "quantitative",
-                    "title": "Questões",
-                },
+                {"field": "resultado", "type": "nominal", "title": "Resultado"},
+                {"field": "quantidade", "type": "quantitative", "title": "Questões"},
             ],
         },
         "view": {"stroke": None},
+        "background": None,
     }
 
-    st.vega_lite_chart(
-        chart_data,
-        spec,
-        use_container_width=True,
-    )
+    st.vega_lite_chart(chart_data, spec, use_container_width=True)
+
+
+def render_summary_cards(study, questions, streak):
+    values = [
+        ("◷", "HORAS", f"{study['hours']}h", "tempo acumulado"),
+        ("◎", "QUESTÕES", questions["total"], "resolvidas"),
+        ("↗", "APROVEITAMENTO", f"{questions['accuracy']:.1%}", "média geral"),
+        ("⚡", "SEQUÊNCIA", streak, "dias ativos"),
+    ]
+    cols = st.columns(4)
+
+    for col, (icon, label, value, note) in zip(cols, values):
+        with col:
+            st.html(
+                f"""
+                <div class="stat-card">
+                    <div class="stat-icon">{icon}</div>
+                    <div class="stat-label">{label}</div>
+                    <div class="stat-value">{value}</div>
+                    <div class="stat-note">{note}</div>
+                </div>
+                """
+            )
 
 
 def render():
@@ -79,29 +91,16 @@ def render():
     streak = general_streak()
     week = weekly_summary()
 
-    header("Progresso", "Estudo, questões e evolução.")
+    header("Progresso", "Seu desempenho em uma visão única.")
+    render_summary_cards(study, questions, streak)
 
-    cols = st.columns(4)
-    values = [
-        ("Horas", f"{study['hours']}h"),
-        ("Questões", questions["total"]),
-        ("Aproveitamento", f"{questions['accuracy']:.1%}"),
-        ("Sequência", f"{streak} dias"),
-    ]
-
-    for col, (label, value) in zip(cols, values):
-        with col:
-            st.metric(label, value)
-
+    st.write("")
     st.progress(
         level_progress,
-        text=(
-            f"Nível {level} • {xp_in_level}/1000 XP • "
-            f"faltam {missing} XP"
-        ),
+        text=f"Nível {level} • {xp_in_level}/1000 XP • faltam {missing} XP",
     )
 
-    section("📋 Esta semana")
+    section("Esta semana")
     week_cols = st.columns(5)
     week_values = [
         ("Horas", f"{week['hours']}h"),
@@ -115,7 +114,7 @@ def render():
         with col:
             st.metric(label, value)
 
-    section("📊 Horas estudadas")
+    section("Horas estudadas")
     history = get_history()
 
     if history:
@@ -127,19 +126,7 @@ def render():
     else:
         st.info("Ainda não há histórico de estudo.")
 
-    section("🎯 Questões")
-    question_cols = st.columns(4)
-    q_values = [
-        ("Feitas", questions["total"]),
-        ("Acertos", questions["correct"]),
-        ("Erros", questions["wrong"]),
-        ("Acerto", f"{questions['accuracy']:.1%}"),
-    ]
-
-    for col, (label, value) in zip(question_cols, q_values):
-        with col:
-            st.metric(label, value)
-
+    section("Questões")
     if questions["total"] > 0:
         left, right = st.columns([1.05, 1], gap="large")
 
@@ -150,16 +137,23 @@ def render():
                     <div class="performance-label">DESEMPENHO GERAL</div>
                     <div class="performance-value">{questions['accuracy']:.1%}</div>
                     <div class="performance-copy">
-                        {questions['correct']} acertos em {questions['total']} questões.
+                        {questions['correct']} acertos • {questions['wrong']} erros • {questions['total']} questões
                     </div>
                 </div>
                 """
             )
 
         with right:
+            st.html(
+                """
+                <div class="dashboard-card-label" style="margin:6px 0 0 4px">DISTRIBUIÇÃO</div>
+                """
+            )
             render_question_chart(questions)
+    else:
+        st.info("Registre questões ao concluir uma missão para liberar esta análise.")
 
-    section("📈 Evolução semanal")
+    section("Evolução semanal")
     trend = pd.DataFrame(weekly_accuracy_series(8))
 
     if trend["questoes"].sum() > 0:
@@ -169,7 +163,7 @@ def render():
     else:
         st.info("Ainda não há questões suficientes para mostrar a evolução.")
 
-    section("🧠 Desempenho por matéria")
+    section("Desempenho por matéria")
     subjects = subject_totals()
 
     if subjects:
@@ -204,14 +198,11 @@ def render():
             },
         )
     else:
-        st.info(
-            "O desempenho por matéria começa a aparecer nas novas sessões registradas."
-        )
+        st.info("O desempenho por matéria começa a aparecer nas novas sessões registradas.")
 
-    section("❌ Pontos para revisar")
+    section("Pontos para revisar")
     open_errors = [
-        row
-        for row in records("Erros")
+        row for row in records("Erros")
         if row.get("status") != "Resolvido"
     ]
 
