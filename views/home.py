@@ -119,7 +119,7 @@ def render():
             current_page = int(book["pagina_atual"])
             total_pages = max(1, int(book["total_paginas"]))
             book_progress = min(current_page / total_pages, 1.0)
-            daily_remaining = remaining_today(book)
+            daily_target = remaining_today(book)
 
             st.html(
                 f"""
@@ -127,7 +127,7 @@ def render():
                     <div style="color:#f4f7fb;font-weight:800;">{book['titulo']}</div>
                     <div style="color:#91a4bc;font-size:.8rem;margin-top:4px;">{book['autor']}</div>
                     <div style="margin-top:14px;color:#f4f7fb;">Página {current_page} de {total_pages}</div>
-                    <div style="margin-top:6px;color:#9dddff;font-size:.82rem;">Meta de hoje: {daily_remaining} página(s)</div>
+                    <div style="margin-top:6px;color:#9dddff;font-size:.82rem;">Meta sugerida: {daily_target} página(s)</div>
                 </div>
                 """
             )
