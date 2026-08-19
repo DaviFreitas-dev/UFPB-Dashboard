@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from html import escape
 
 import streamlit as st
 
@@ -28,72 +29,119 @@ from modules.planner import (
 from modules.ui import header, section
 
 
-def render_week():
-    section("📅 Semana fixa")
-
-    with st.form("weekly_schedule_form", clear_on_submit=True):
-        cols = st.columns([1.1, 1, 2.4, 1.3])
-        with cols[0]:
-            day_name = st.selectbox("Dia", WEEKDAYS)
-        with cols[1]:
-            hour = st.time_input("Horário")
-        with cols[2]:
-            activity = st.text_input("Atividade", placeholder="Ex.: Escola, academia, revisão...")
-        with cols[3]:
-            category = st.selectbox(
-                "Categoria",
-                ["Escola", "Estudo", "Saúde", "Pessoal", "Outro"],
-            )
-
-        submitted = st.form_submit_button(
-            "Adicionar à semana",
-            type="primary",
-            use_container_width=True,
-        )
-
-    if submitted and activity.strip():
-        add_weekly(
-            day_name,
-            hour.strftime("%H:%M"),
-            activity.strip(),
-            category,
-        )
-        st.rerun()
-
-    items = weekly_items()
-
-    if not items:
-        st.info("Nenhum horário fixo cadastrado.")
-        return
+def render_calendar(items):
+    day_blocks = []
 
     for day_name in WEEKDAYS:
         day_items = [
             item for item in items
             if item.get("dia_semana") == day_name
         ]
-        if not day_items:
-            continue
+        entries = []
 
-        st.markdown(f"**{day_name}**")
-        for item in sorted(day_items, key=lambda row: str(row.get("hora"))):
-            text_col, action_col = st.columns([10, 1])
-            with text_col:
-                st.write(
-                    f"{item.get('hora', '--:--')} — "
-                    f"**{item.get('atividade', '')}** · {item.get('categoria', '')}"
+        for item in sorted(day_items, key=lambda row: str(row.get("hora", ""))):
+            entries.append(
+                f"""
+                <div class="calendar-item">
+                    <div class="calendar-item-time">{escape(str(item.get('hora', '--:--')))}</div>
+                    <div class="calendar-item-title">{escape(str(item.get('atividade', '')))}</div>
+                    <div class="calendar-item-category">{escape(str(item.get('categoria', '')))}</div>
+                </div>
+                """
+            )
+
+        if not entries:
+            entries.append(
+                '<div class="calendar-item-category" style="padding:6px 2px">livre</div>'
+            )
+
+        day_blocks.append(
+            f"""
+            <div class="calendar-day">
+                <div class="calendar-day-name">{day_name}</div>
+                {''.join(entries)}
+            </div>
+            """
+        )
+
+    st.html(
+        f"""
+        <div class="calendar-board">
+            <div class="calendar-grid">{''.join(day_blocks)}</div>
+        </div>
+        """
+    )
+
+
+def render_week():
+    section("Calendário semanal")
+    items = weekly_items()
+    render_calendar(items)
+
+    with st.expander("＋ Adicionar ou gerenciar horários"):
+        with st.form("weekly_schedule_form", clear_on_submit=True):
+            cols = st.columns([1.1, 1, 2.4, 1.3])
+            with cols[0]:
+                day_name = st.selectbox("Dia", WEEKDAYS)
+            with cols[1]:
+                hour = st.time_input("Horário")
+            with cols[2]:
+                activity = st.text_input(
+                    "Atividade",
+                    placeholder="Ex.: Escola, academia, revisão...",
                 )
-            with action_col:
-                if st.button(
-                    "📦",
-                    key=f"archive_weekly_{item['id']}",
-                    help="Arquivar",
-                ):
-                    archive_weekly(item["id"])
-                    st.rerun()
+            with cols[3]:
+                category = st.selectbox(
+                    "Categoria",
+                    ["Escola", "Estudo", "Saúde", "Pessoal", "Outro"],
+                )
+
+            submitted = st.form_submit_button(
+                "Adicionar à semana",
+                type="primary",
+                use_container_width=True,
+            )
+
+        if submitted and activity.strip():
+            add_weekly(
+                day_name,
+                hour.strftime("%H:%M"),
+                activity.strip(),
+                category,
+            )
+            st.rerun()
+
+        if not items:
+            st.caption("Nenhum horário fixo cadastrado ainda.")
+        else:
+            for day_name in WEEKDAYS:
+                day_items = [
+                    item for item in items
+                    if item.get("dia_semana") == day_name
+                ]
+                if not day_items:
+                    continue
+
+                st.markdown(f"**{day_name}**")
+                for item in sorted(day_items, key=lambda row: str(row.get("hora", ""))):
+                    text_col, action_col = st.columns([10, 1])
+                    with text_col:
+                        st.write(
+                            f"{item.get('hora', '--:--')} — "
+                            f"**{item.get('atividade', '')}** · {item.get('categoria', '')}"
+                        )
+                    with action_col:
+                        if st.button(
+                            "📦",
+                            key=f"archive_weekly_{item['id']}",
+                            help="Arquivar",
+                        ):
+                            archive_weekly(item["id"])
+                            st.rerun()
 
 
 def render_deadlines():
-    section("⚔️ Provas, trabalhos e prazos")
+    section("Provas, trabalhos e prazos")
 
     with st.form("assessment_form", clear_on_submit=True):
         title = st.text_input("Título", placeholder="Ex.: Prova de Física")
@@ -153,15 +201,19 @@ def render_deadlines():
             if days > 0
             else f"atrasado {abs(days)} dia(s)"
         )
+        title_text = escape(str(item.get("titulo", "")))
+        subject_text = escape(str(item.get("disciplina", "")))
+        date_text = escape(str(item.get("data", "")))
+        question_goal = int(item.get("meta_questoes", 0) or 0)
+        meta_text = f" • meta {question_goal} questões" if question_goal else ""
 
         st.html(
             f"""
             <div class="mission {'mission-active' if boss else ''}">
                 <div class="mission-kicker">{label}</div>
-                <div class="mission-title">{item.get('titulo', '')}</div>
+                <div class="mission-title">{title_text}</div>
                 <div class="mission-meta">
-                    {item.get('disciplina', '')} • {item.get('data', '')} • {countdown}
-                    {' • meta ' + str(item.get('meta_questoes', 0)) + ' questões' if int(item.get('meta_questoes', 0) or 0) else ''}
+                    {subject_text} • {date_text} • {countdown}{meta_text}
                 </div>
             </div>
             """
@@ -170,7 +222,7 @@ def render_deadlines():
         done_col, delete_col = st.columns([4, 1])
         with done_col:
             if st.button(
-                "✅ Concluir",
+                "Concluir",
                 key=f"complete_assessment_{item['id']}",
                 use_container_width=True,
             ):
@@ -179,7 +231,7 @@ def render_deadlines():
 
         with delete_col:
             if st.button(
-                "🗑️",
+                "Excluir",
                 key=f"delete_assessment_{item['id']}",
                 use_container_width=True,
             ):
@@ -191,25 +243,27 @@ def render_reviews_errors():
     left, right = st.columns(2, gap="large")
 
     with left:
-        section("🧠 Revisões pendentes")
+        section("Revisões pendentes")
         reviews = due_reviews()
 
         if not reviews:
             st.success("Nenhuma revisão vencida.")
         else:
             for review in reviews:
+                discipline = escape(str(review.get("disciplina", "")))
+                topic = escape(str(review.get("assunto", "")))
+                when = escape(str(review.get("data", "")))
                 st.html(
                     f"""
-                    <div class="panel">
-                        <strong>{review.get('disciplina', '')}</strong><br>
-                        <span style="color:#94a3b8">
-                            {review.get('assunto', '')} • {review.get('data', '')}
-                        </span>
+                    <div class="dashboard-card">
+                        <div class="dashboard-card-label">REVISÃO</div>
+                        <div class="dashboard-card-title">{discipline}</div>
+                        <div class="dashboard-card-copy">{topic} • {when}</div>
                     </div>
                     """
                 )
                 if st.button(
-                    "✅ Revisão feita",
+                    "Revisão feita",
                     key=f"review_{review['id']}",
                     use_container_width=True,
                 ):
@@ -217,26 +271,30 @@ def render_reviews_errors():
                     st.rerun()
 
     with right:
-        section("❌ Caderno de erros")
+        section("Caderno de erros")
         errors = open_errors()
 
         if not errors:
             st.success("Nenhum erro aberto.")
         else:
             for error in errors:
+                discipline = escape(str(error.get("disciplina", "")))
+                topic = escape(str(error.get("assunto", "")))
+                note = escape(str(error.get("nota", ""))) if error.get("nota") else ""
+                note_text = f" • {note}" if note else ""
                 st.html(
                     f"""
-                    <div class="panel">
-                        <strong>{error.get('disciplina', '')} · {error.get('assunto', '')}</strong><br>
-                        <span style="color:#94a3b8">
-                            {error.get('quantidade', 0)} erro(s)
-                            {' • ' + str(error.get('nota')) if error.get('nota') else ''}
-                        </span>
+                    <div class="dashboard-card">
+                        <div class="dashboard-card-label">PONTO FRACO</div>
+                        <div class="dashboard-card-title">{discipline} · {topic}</div>
+                        <div class="dashboard-card-copy">
+                            {error.get('quantidade', 0)} erro(s){note_text}
+                        </div>
                     </div>
                     """
                 )
                 if st.button(
-                    "✓ Marcar como resolvido",
+                    "Marcar como resolvido",
                     key=f"error_{error['id']}",
                     use_container_width=True,
                 ):
@@ -248,7 +306,7 @@ def render_goals_tomorrow():
     left, right = st.columns(2, gap="large")
 
     with left:
-        section("🎯 Meta semanal de questões")
+        section("Meta semanal de questões")
         goal = current_week_goal()
         target = int(goal.get("alvo", 200) or 200)
 
@@ -270,16 +328,30 @@ def render_goals_tomorrow():
             st.rerun()
 
         progress = weekly_goal_progress()
-        st.progress(
-            progress["progress"],
-            text=f"{progress['done']} / {progress['target']} questões",
+        progress_percent = round(progress["progress"] * 100)
+        progress_degrees = round(progress["progress"] * 360)
+        st.html(
+            f"""
+            <div class="dashboard-card">
+                <div class="progress-orb-wrap">
+                    <div class="progress-orb" style="--progress:{progress_degrees}deg">
+                        <div class="progress-orb-value">{progress_percent}%<small>semana</small></div>
+                    </div>
+                    <div>
+                        <div class="dashboard-card-label">META ATUAL</div>
+                        <div class="dashboard-card-title">{progress['done']} / {progress['target']} questões</div>
+                        <div class="dashboard-card-copy">Acompanhe o avanço da semana sem depender só do total acumulado.</div>
+                    </div>
+                </div>
+            </div>
+            """
         )
 
         if progress["reached"]:
             st.success("Meta alcançada! +100 XP.")
 
     with right:
-        section("🌙 As 3 de amanhã")
+        section("As 3 de amanhã")
         tomorrow = date.today() + timedelta(days=1)
         priorities = priorities_for_date(tomorrow)
 
@@ -312,7 +384,7 @@ def render_goals_tomorrow():
 
 
 def render_journal():
-    section("📝 Diário rápido")
+    section("Diário rápido")
 
     with st.form("journal_form", clear_on_submit=True):
         text = st.text_area(
@@ -342,7 +414,7 @@ def render_journal():
 
 def render_weekly_review():
     summary = weekly_summary()
-    section("📋 Semana em uma tela")
+    section("Visão da semana")
 
     cols = st.columns(5)
     values = [
@@ -359,13 +431,12 @@ def render_weekly_review():
 
 
 def render():
-    header("Planejar", "Semana, prazos, revisões e metas.")
-
+    header("Planejar", "Calendário, prazos, revisões e metas.")
     render_weekly_review()
 
     tabs = st.tabs(
         [
-            "Semana",
+            "Calendário",
             "Prazos",
             "Revisões & erros",
             "Metas & amanhã",
