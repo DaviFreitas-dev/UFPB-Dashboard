@@ -28,7 +28,7 @@ def add(activity_type):
         None,
     )
 
-    if existing:
+    if existing and existing.get("id"):
         update_record("Atividade", existing["id"], {"feito": "Sim"})
     else:
         append_record(

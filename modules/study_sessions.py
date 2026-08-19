@@ -46,6 +46,7 @@ def record_study_session(
 
     session_id = new_id()
     hours = sum(int(value) for value in mission.values())
+    topic_text = topic.strip() or "Revisão geral"
 
     append_record(
         "SessoesEstudo",
@@ -53,7 +54,7 @@ def record_study_session(
             session_id,
             str(date.today()),
             primary_subject,
-            topic.strip() or "Revisão geral",
+            topic_text,
             hours,
             total,
             correct,
@@ -64,16 +65,17 @@ def record_study_session(
 
     record_question_session(mission, total, correct, wrong)
 
-    schedule_reviews(
-        primary_subject,
-        topic,
-        origin=f"session:{session_id}",
-    )
+    for subject in mission:
+        schedule_reviews(
+            subject,
+            topic_text,
+            origin=f"session:{session_id}:{subject}",
+        )
 
     if wrong > 0:
         add_error(
             primary_subject,
-            topic,
+            topic_text,
             wrong,
             note,
         )
