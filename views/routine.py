@@ -2,70 +2,95 @@ from datetime import date
 
 import streamlit as st
 
+from modules.planner import (
+    checkins_for_date,
+    toggle_weekly,
+    weekly_for_date,
+)
 from modules.routine import add, records_for_date, remove, toggle
 from modules.ui import header, section
 
 
 def render():
-    header(
-        "Rotina",
-        "Organize horários e compromissos do dia sem misturar com suas tarefas.",
-    )
+    header("Rotina", "Horários do dia e agenda fixa.")
 
-    with st.container(border=True):
-        activity = st.text_input(
-            "Atividade",
-            placeholder="Ex.: estudar, academia, projeto pessoal...",
-        )
-        col1, col2 = st.columns(2)
-
-        with col1:
-            hour = st.time_input("Horário")
-
-        with col2:
-            target_date = st.date_input("Data", value=date.today())
-
-        if st.button(
-            "➕ Adicionar à rotina",
-            type="primary",
-            use_container_width=True,
-        ):
-            if activity.strip():
-                add(
-                    activity.strip(),
-                    hour.strftime("%H:%M"),
-                    target_date,
-                )
-                st.success("Atividade adicionada!")
-                st.rerun()
-            else:
-                st.warning("Digite uma atividade antes de adicionar.")
-
-    section("📅 Agenda")
     selected_date = st.date_input(
-        "Ver rotina de",
+        "Dia",
         value=date.today(),
         key="routine_view_date",
     )
-    items = records_for_date(selected_date)
 
-    if not items:
-        st.info("Sua rotina está vazia nessa data.")
-        return
+    fixed = weekly_for_date(selected_date)
+    fixed_checkins = checkins_for_date(selected_date)
+    custom = records_for_date(selected_date)
 
-    done_count = sum(item["status"] == "Concluída" for item in items)
-    st.progress(
-        done_count / len(items),
-        text=f"{done_count} de {len(items)} atividades concluídas",
+    total = len(fixed) + len(custom)
+    done_fixed = sum(
+        fixed_checkins.get(str(item["id"]), {}).get("status") == "Concluída"
+        for item in fixed
+    )
+    done_custom = sum(
+        item.get("status") == "Concluída"
+        for item in custom
     )
 
-    for item in sorted(items, key=lambda row: row["hora"]):
+    if total:
+        st.progress(
+            (done_fixed + done_custom) / total,
+            text=f"{done_fixed + done_custom} de {total} atividades concluídas",
+        )
+
+    section("🧩 Semana fixa")
+
+    if not fixed:
+        st.info("Nada fixo para este dia. Cadastre em Planejar.")
+    else:
+        for item in sorted(fixed, key=lambda row: str(row.get("hora"))):
+            checkin = fixed_checkins.get(str(item["id"]), {})
+            checked = checkin.get("status") == "Concluída"
+            new_value = st.checkbox(
+                f"{item.get('hora', '--:--')} — {item.get('atividade', '')} · {item.get('categoria', '')}",
+                value=checked,
+                key=f"fixed_{selected_date}_{item['id']}",
+            )
+            if new_value != checked:
+                toggle_weekly(item["id"], selected_date, new_value)
+                st.rerun()
+
+    section("📌 Compromissos avulsos")
+
+    with st.expander("Adicionar compromisso"):
+        with st.form("routine_add_form", clear_on_submit=True):
+            activity = st.text_input(
+                "Atividade",
+                placeholder="Ex.: reunião, médico, estudo extra...",
+            )
+            hour = st.time_input("Horário")
+            submitted = st.form_submit_button(
+                "Adicionar",
+                type="primary",
+                use_container_width=True,
+            )
+
+        if submitted and activity.strip():
+            add(
+                activity.strip(),
+                hour.strftime("%H:%M"),
+                selected_date,
+            )
+            st.rerun()
+
+    if not custom:
+        st.info("Nenhum compromisso avulso.")
+        return
+
+    for item in sorted(custom, key=lambda row: str(row.get("hora"))):
         check_col, delete_col = st.columns([10, 1])
-        checked = item["status"] == "Concluída"
+        checked = item.get("status") == "Concluída"
 
         with check_col:
             new_value = st.checkbox(
-                f"{item['hora']} — {item['atividade']}",
+                f"{item.get('hora', '--:--')} — {item.get('atividade', '')}",
                 value=checked,
                 key=f"routine_{item['id']}",
             )
@@ -74,7 +99,7 @@ def render():
             if st.button(
                 "🗑️",
                 key=f"delete_routine_{item['id']}",
-                help="Excluir atividade",
+                help="Excluir",
             ):
                 remove(item["id"])
                 st.rerun()

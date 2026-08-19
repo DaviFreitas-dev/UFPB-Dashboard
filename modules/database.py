@@ -38,36 +38,48 @@ def get_worksheet(name):
         return ws
 
 
+def _ensure_header(name, ws):
+    expected = SHEETS[name]
+    current = ws.row_values(1)
+
+    if current == expected:
+        return
+
+    if not current:
+        ws.update([expected])
+        return
+
+    if not all(column in current for column in expected):
+        # Preserva dados antigos: coloca o cabeçalho correto acima do conteúdo.
+        ws.insert_row(expected, 1)
+
+
+@st.cache_data(ttl=15, show_spinner=False)
+def _records_cached(name):
+    ws = get_worksheet(name)
+    _ensure_header(name, ws)
+    return ws.get_all_records() or []
+
+
+def clear_records_cache():
+    _records_cached.clear()
+
+
 @st.cache_resource
 def initialize_database():
     for name in SHEETS:
-        get_worksheet(name)
+        ws = get_worksheet(name)
+        _ensure_header(name, ws)
+
+    clear_records_cache()
     migrate_legacy_data()
     ensure_defaults()
     return True
 
 
-def _repair_header_if_needed(name, ws, rows):
-    """Repara uma aba antiga/malformada sem apagar os dados existentes."""
-    if not rows:
-        return rows
-
-    expected = SHEETS[name]
-    current_keys = set(rows[0].keys())
-
-    if all(column in current_keys for column in expected):
-        return rows
-
-    # Insere o cabeçalho correto acima do conteúdo atual para não perder dados.
-    ws.insert_row(expected, 1)
-    return ws.get_all_records() or []
-
-
 def records(name):
     try:
-        ws = get_worksheet(name)
-        rows = ws.get_all_records() or []
-        return _repair_header_if_needed(name, ws, rows)
+        return [dict(row) for row in _records_cached(name)]
     except gspread.exceptions.APIError as error:
         st.error(f"Erro ao acessar a aba '{name}' do Google Sheets.")
         raise error
@@ -81,6 +93,7 @@ def replace_records(name, rows):
         [header] + rows if rows else [header],
         value_input_option="USER_ENTERED",
     )
+    clear_records_cache()
 
 
 def append_record(name, values):
@@ -88,12 +101,14 @@ def append_record(name, values):
         values,
         value_input_option="USER_ENTERED",
     )
+    clear_records_cache()
 
 
 def _find_record_row(name, record_id):
     rows = records(name)
     if not rows or "id" not in SHEETS[name]:
         return None
+
     return next(
         (
             index
@@ -110,13 +125,22 @@ def update_record(name, record_id, updates):
         return False
 
     ws = get_worksheet(name)
+    cells = []
+
     for field, value in updates.items():
         if field in SHEETS[name]:
-            ws.update_cell(
-                row_number,
-                SHEETS[name].index(field) + 1,
-                value,
+            cells.append(
+                gspread.Cell(
+                    row_number,
+                    SHEETS[name].index(field) + 1,
+                    value,
+                )
             )
+
+    if cells:
+        ws.update_cells(cells, value_input_option="USER_ENTERED")
+        clear_records_cache()
+
     return True
 
 
@@ -124,7 +148,9 @@ def delete_record(name, record_id):
     row_number = _find_record_row(name, record_id)
     if row_number is None:
         return False
+
     get_worksheet(name).delete_rows(row_number)
+    clear_records_cache()
     return True
 
 
@@ -142,13 +168,16 @@ def get_user(key, default=None):
 def set_user(key, value):
     rows = records("Usuario")
     found = False
+
     for row in rows:
         if str(row.get("chave")) == key:
             row["valor"] = str(value)
             found = True
             break
+
     if not found:
         rows.append({"chave": key, "valor": str(value)})
+
     replace_records(
         "Usuario",
         [[row["chave"], row["valor"]] for row in rows],
@@ -171,6 +200,7 @@ def migrate_legacy_data():
         return
 
     book = connect_sheet()
+
     try:
         first_sheet = book.worksheets()[0]
         raw = first_sheet.acell("A1").value
@@ -234,17 +264,21 @@ def ensure_defaults():
 
 def get_config():
     rows = records("Config")
+
     if not rows:
         ensure_defaults()
         rows = records("Config")
+
     return rows
 
 
 def get_cycle():
     rows = records("Ciclo")
+
     if not rows:
         reset_cycle()
         rows = records("Ciclo")
+
     return rows
 
 
@@ -275,9 +309,9 @@ def add_history(hours, xp):
     found = False
 
     for row in rows:
-        if row["data"] == today:
-            row["horas"] = int(row["horas"]) + int(hours)
-            row["xp"] = int(row["xp"]) + int(xp)
+        if str(row.get("data")) == today:
+            row["horas"] = int(row.get("horas", 0)) + int(hours)
+            row["xp"] = int(row.get("xp", 0)) + int(xp)
             found = True
             break
 
@@ -293,7 +327,7 @@ def add_history(hours, xp):
     replace_records(
         "Historico",
         [
-            [row["data"], row["horas"], row["xp"]]
+            [row.get("data", ""), row.get("horas", 0), row.get("xp", 0)]
             for row in rows
         ],
     )
@@ -311,4 +345,5 @@ def update_user_config(rows):
 def reset_progress():
     set_xp(0)
     replace_records("Historico", [])
+    replace_records("XPEventos", [])
     reset_cycle()

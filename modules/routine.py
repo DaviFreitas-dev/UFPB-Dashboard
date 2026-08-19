@@ -7,11 +7,16 @@ from modules.database import (
     records,
     update_record,
 )
+from modules.gamification import award_xp_once
 
 
 def records_for_date(target_date):
     target = str(target_date)
-    return [row for row in records("Rotina") if row["data"] == target]
+    return [
+        row
+        for row in records("Rotina")
+        if str(row.get("data")) == target
+    ]
 
 
 def today_records():
@@ -27,11 +32,19 @@ def add(activity, time_text, target_date=None):
 
 
 def toggle(item_id, done):
-    update_record(
+    updated = update_record(
         "Rotina",
         item_id,
         {"status": "Concluída" if done else "Pendente"},
     )
+
+    if updated and done:
+        award_xp_once(
+            f"routine:{item_id}",
+            10,
+            "rotina",
+            "Compromisso do dia concluído",
+        )
 
 
 def remove(item_id):

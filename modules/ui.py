@@ -47,6 +47,7 @@ def render_sidebar():
             "NAVEGAÇÃO",
             [
                 "🏠 Hoje",
+                "🗓️ Planejar",
                 "📅 Rotina",
                 "🎯 Ciclo",
                 "📚 Missões",

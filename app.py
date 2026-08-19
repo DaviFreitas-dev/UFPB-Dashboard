@@ -9,6 +9,7 @@ from views import (
     habits,
     home,
     missions,
+    planning,
     progress,
     reading,
     routine,
@@ -30,6 +31,7 @@ page = render_sidebar()
 
 pages = {
     "🏠 Hoje": home.render,
+    "🗓️ Planejar": planning.render,
     "📅 Rotina": routine.render,
     "🎯 Ciclo": cycle.render,
     "📚 Missões": missions.render,
