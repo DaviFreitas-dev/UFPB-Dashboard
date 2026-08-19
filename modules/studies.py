@@ -1,7 +1,7 @@
 import random
 from datetime import date, timedelta
 
-from modules.config import XP_POR_HORA
+from modules.config import XP_POR_HORA, XP_POR_NIVEL
 from modules.database import (
     add_history,
     get_config,
@@ -14,11 +14,10 @@ from modules.database import (
 
 
 def calculate_level(xp):
-    level = xp // 1000 + 1
-    xp_in_level = xp % 1000
-    progress = xp_in_level / 1000
-    missing = 1000 - xp_in_level
-
+    level = xp // XP_POR_NIVEL + 1
+    xp_in_level = xp % XP_POR_NIVEL
+    progress = xp_in_level / XP_POR_NIVEL
+    missing = XP_POR_NIVEL - xp_in_level
     return level, xp_in_level, progress, missing
 
 
@@ -26,51 +25,33 @@ def stats():
     rows = get_history()
 
     if not rows:
-        return {
-            "hours": 0,
-            "average": 0,
-            "best": 0,
-            "days": 0,
-            "streak": 0,
-        }
+        return {"hours": 0, "average": 0, "best": 0, "days": 0, "streak": 0}
 
     data = {}
 
     for row in rows:
         try:
-            day = date.fromisoformat(str(row["data"]))
-            hours = int(row["horas"])
-
+            day = date.fromisoformat(str(row.get("data")))
+            hours = int(row.get("horas", 0) or 0)
             data[day] = hours
-
-        except (
-            ValueError,
-            TypeError,
-            KeyError,
-        ):
+        except (ValueError, TypeError):
             continue
 
-    if not data:
-        return {
-            "hours": 0,
-            "average": 0,
-            "best": 0,
-            "days": 0,
-            "streak": 0,
-        }
+    study_days = {day: hours for day, hours in data.items() if hours > 0}
 
-    total_hours = sum(data.values())
-    average = total_hours / len(data)
-    best = max(data.values())
+    if not study_days:
+        return {"hours": 0, "average": 0, "best": 0, "days": 0, "streak": 0}
+
+    total_hours = sum(study_days.values())
+    average = total_hours / len(study_days)
+    best = max(study_days.values())
 
     cursor = date.today()
-
-    if cursor not in data:
+    if cursor not in study_days:
         cursor -= timedelta(days=1)
 
     streak = 0
-
-    while cursor in data and data[cursor] > 0:
+    while cursor in study_days:
         streak += 1
         cursor -= timedelta(days=1)
 
@@ -78,7 +59,7 @@ def stats():
         "hours": total_hours,
         "average": average,
         "best": best,
-        "days": len(data),
+        "days": len(study_days),
         "streak": streak,
     }
 
@@ -86,76 +67,35 @@ def stats():
 def cycle_summary():
     config = get_config()
     cycle = get_cycle()
-
-    total = sum(
-        int(row["horas"])
-        for row in config
-    )
-
-    remaining = sum(
-        int(row["restantes"])
-        for row in cycle
-    )
-
-    done = max(
-        total - remaining,
-        0,
-    )
-
-    progress = (
-        done / total
-        if total
-        else 0
-    )
-
-    return (
-        total,
-        remaining,
-        done,
-        progress,
-    )
+    total = sum(int(row.get("horas", 0) or 0) for row in config)
+    remaining = sum(int(row.get("restantes", 0) or 0) for row in cycle)
+    done = max(total - remaining, 0)
+    progress = done / total if total else 0
+    return total, remaining, done, progress
 
 
 def draw_mission(hours, environment):
     cycle = get_cycle()
-
     config = {
-        row["disciplina"]: row["ambiente"]
+        row.get("disciplina"): row.get("ambiente")
         for row in get_config()
     }
-
     available = {}
 
     for row in cycle:
-        subject = row["disciplina"]
-
+        subject = row.get("disciplina")
         try:
-            remaining = int(
-                row["restantes"]
-            )
-
-        except (
-            TypeError,
-            ValueError,
-        ):
+            remaining = int(row.get("restantes", 0) or 0)
+        except (TypeError, ValueError):
             remaining = 0
 
-        if remaining <= 0:
+        if not subject or remaining <= 0:
             continue
 
-        env = config.get(
-            subject,
-            "Ambos",
-        )
+        env = config.get(subject, "Ambos")
 
-        if (
-            environment == "Ambos"
-            or env == "Ambos"
-            or env == environment
-        ):
-            available[
-                subject
-            ] = remaining
+        if environment == "Ambos" or env == "Ambos" or env == environment:
+            available[subject] = remaining
 
     if not available:
         return {}
@@ -163,56 +103,22 @@ def draw_mission(hours, environment):
     remaining_hours = int(hours)
     mission = {}
 
-    while (
-        remaining_hours > 0
-        and available
-    ):
-        subject = random.choice(
-            list(
-                available.keys()
-            )
-        )
-
-        maximum = min(
-            remaining_hours,
-            available[subject],
-        )
-
-        amount = random.randint(
-            1,
-            maximum,
-        )
-
-        mission[
-            subject
-        ] = (
-            mission.get(
-                subject,
-                0,
-            )
-            + amount
-        )
-
+    while remaining_hours > 0 and available:
+        subject = random.choice(list(available.keys()))
+        maximum = min(remaining_hours, available[subject])
+        amount = random.randint(1, maximum)
+        mission[subject] = mission.get(subject, 0) + amount
         remaining_hours -= amount
+        available[subject] -= amount
 
-        available[
-            subject
-        ] -= amount
-
-        if available[
-            subject
-        ] <= 0:
-            del available[
-                subject
-            ]
+        if available[subject] <= 0:
+            del available[subject]
 
     return mission
 
 
 def complete_mission(mission):
-    hours = sum(
-        mission.values()
-    )
+    hours = sum(int(value) for value in mission.values())
 
     if hours <= 0:
         return 0, 0
@@ -220,42 +126,16 @@ def complete_mission(mission):
     cycle = get_cycle()
 
     for row in cycle:
-        subject = row[
-            "disciplina"
-        ]
+        subject = row.get("disciplina")
 
         if subject in mission:
-            row[
-                "restantes"
-            ] = max(
+            row["restantes"] = max(
                 0,
-                int(
-                    row[
-                        "restantes"
-                    ]
-                )
-                - mission[
-                    subject
-                ],
+                int(row.get("restantes", 0) or 0) - int(mission[subject]),
             )
 
-    update_cycle(
-        cycle
-    )
-
-    xp = (
-        hours
-        * XP_POR_HORA
-    )
-
-    set_xp(
-        get_xp()
-        + xp
-    )
-
-    add_history(
-        hours,
-        xp,
-    )
-
+    update_cycle(cycle)
+    xp = hours * XP_POR_HORA
+    set_xp(get_xp() + xp)
+    add_history(hours, xp)
     return hours, xp

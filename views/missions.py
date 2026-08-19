@@ -3,8 +3,8 @@ import streamlit.components.v1 as components
 
 from modules.config import XP_POR_HORA
 from modules.database import get_config
-from modules.questions import record_session
 from modules.studies import complete_mission, draw_mission
+from modules.study_sessions import record_study_session
 from modules.ui import header, section
 
 
@@ -112,19 +112,29 @@ def render_pomodoro(minutes):
 
 def render_review(mission):
     total_hours = sum(mission.values())
-    subjects = " • ".join(mission.keys())
 
     st.html(
         f"""
         <div class="question-review">
-            <div class="question-review-label">FECHAMENTO DA MISSÃO</div>
-            <div class="question-review-title">Como foi sua prática?</div>
-            <div class="question-review-meta">{total_hours}h • {subjects}</div>
+            <div class="question-review-label">FECHAMENTO</div>
+            <div class="question-review-title">Como foi a sessão?</div>
+            <div class="question-review-meta">{total_hours}h</div>
         </div>
         """
     )
 
+    subjects = list(mission.keys())
+
     with st.form("mission_review_form"):
+        primary_subject = st.selectbox(
+            "Disciplina principal",
+            subjects,
+        )
+        topic = st.text_input(
+            "Assunto estudado",
+            placeholder="Ex.: Cinemática, funções, estequiometria...",
+        )
+
         col_total, col_correct, col_wrong = st.columns(3)
 
         with col_total:
@@ -151,6 +161,12 @@ def render_review(mission):
                 value=0,
             )
 
+        note = st.text_area(
+            "Nota rápida / o que precisa melhorar",
+            placeholder="Opcional. Se houver erros, isso entra no caderno de erros.",
+            height=90,
+        )
+
         submitted = st.form_submit_button(
             "✅ SALVAR E CONCLUIR",
             type="primary",
@@ -159,33 +175,38 @@ def render_review(mission):
 
     if submitted:
         if correct + wrong != total:
-            st.error("Acertos + erros precisam ser iguais ao total de questões feitas.")
+            st.error("Acertos + erros precisam ser iguais ao total.")
             return
 
-        hours, xp = complete_mission(mission)
-        record_session(mission, total, correct, wrong)
+        hours, base_xp = complete_mission(mission)
+        session = record_study_session(
+            mission,
+            primary_subject,
+            topic,
+            total,
+            correct,
+            wrong,
+            note,
+        )
 
         st.session_state["pending_mission"] = None
         st.session_state["mission_review"] = None
         st.session_state["completion"] = {
             "hours": hours,
-            "xp": xp,
+            "base_xp": base_xp,
+            "bonus_xp": session["question_xp"],
             "questions": total,
             "correct": correct,
-            "wrong": wrong,
         }
         st.rerun()
 
-    if st.button("← Voltar para a missão", use_container_width=True):
+    if st.button("← Voltar", use_container_width=True):
         st.session_state["mission_review"] = None
         st.rerun()
 
 
 def render():
-    header(
-        "Missões",
-        "Sorteie uma sessão, estude e registre o resultado no final.",
-    )
+    header("Missões", "Sorteie, estude e feche a sessão.")
 
     if "pending_mission" not in st.session_state:
         st.session_state["pending_mission"] = None
@@ -206,13 +227,13 @@ def render():
                 <div class="mission-kicker">MISSÃO ATIVA</div>
                 <div class="mission-title">Sessão pronta</div>
                 <div class="mission-hours">{total_hours}h</div>
-                <div class="mission-meta">Conclua quando terminar o estudo.</div>
+                <div class="mission-meta">Finalize quando terminar.</div>
             </div>
             """
         )
 
         config = {
-            row["disciplina"]: row["ambiente"]
+            row.get("disciplina"): row.get("ambiente")
             for row in get_config()
         }
 
@@ -223,10 +244,7 @@ def render():
                     <div class="mission-title">{subject}</div>
                     <div class="mission-meta">
                         <span class="badge">{config.get(subject, 'Ambos')}</span>
-                        <span class="mission-separator">•</span>
-                        {hours}h
-                        <span class="mission-separator">•</span>
-                        +{hours * XP_POR_HORA} XP
+                        • {hours}h • +{hours * XP_POR_HORA} XP
                     </div>
                 </div>
                 """
@@ -264,6 +282,7 @@ def render():
                 use_container_width=True,
             ):
                 environment = "Ambos"
+
                 if "Transporte" in mode:
                     environment = "Transporte"
                 elif "Mesa" in mode:
@@ -284,16 +303,18 @@ def render():
         total = completion["questions"]
         correct = completion["correct"]
         accuracy = (correct / total * 100) if total else 0
+        total_xp = completion["base_xp"] + completion["bonus_xp"]
 
         st.success(
-            f"Missão concluída: {completion['hours']}h • +{completion['xp']} XP • "
-            f"{total} questões • {accuracy:.0f}% de acerto"
+            f"Concluída: {completion['hours']}h • +{total_xp} XP • "
+            f"{total} questões • {accuracy:.0f}% de acerto. "
+            "Revisões 1-7-30 foram agendadas."
         )
 
     st.write("")
     section("⏱️ Pomodoro")
     minutes = st.select_slider(
-        "Duração da sessão",
+        "Duração",
         options=[25, 40, 50, 60, 90],
         value=50,
     )
