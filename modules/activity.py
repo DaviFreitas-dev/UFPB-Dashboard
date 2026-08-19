@@ -8,7 +8,7 @@ def today():
     return [
         row
         for row in records("Atividade")
-        if row["data"] == today_text and row["feito"] == "Sim"
+        if row.get("data") == today_text and row.get("feito") == "Sim"
     ]
 
 
@@ -19,11 +19,14 @@ def add(activity_type):
         (
             row
             for row in rows
-            if row["data"] == today_text and row["tipo"] == activity_type
+            if row.get("data") == today_text
+            and row.get("tipo") == activity_type
         ),
         None,
     )
-    if existing:
+
+    if existing and existing.get("id"):
         update_record("Atividade", existing["id"], {"feito": "Sim"})
         return
+
     append_record("Atividade", [new_id(), today_text, activity_type, "Sim"])
