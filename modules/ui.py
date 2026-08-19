@@ -14,22 +14,31 @@ def apply_css():
 
 def render_sidebar():
     xp = get_xp()
-    nivel = xp // XP_POR_NIVEL + 1
+    level = xp // XP_POR_NIVEL + 1
+    xp_in_level = xp % XP_POR_NIVEL
+    progress = int((xp_in_level / XP_POR_NIVEL) * 100)
 
     with st.sidebar:
         st.html(
             """
-            <div class="app-logo">🚀 UFPB ACADEMY</div>
-            <div class="app-logo-sub">PERSONAL COMMAND CENTER</div>
+            <div class="brand">
+                <div class="brand-mark">◆</div>
+                <div class="brand-name">NEXO</div>
+            </div>
             """
         )
 
         st.html(
             f"""
             <div class="side-level">
-                <div class="side-level-label">Nível atual</div>
-                <div class="side-level-number">{nivel}</div>
-                <div style="color:#38bdf8;font-size:.75rem;">{xp:,} XP</div>
+                <div class="side-level-row">
+                    <div class="side-level-number">Nível {level}</div>
+                    <div class="side-level-xp">{xp:,} XP</div>
+                </div>
+                <div class="xp-track">
+                    <div class="xp-fill" style="width:{progress}%"></div>
+                </div>
+                <div class="side-level-hint">{xp_in_level}/{XP_POR_NIVEL}</div>
             </div>
             """.replace(",", ".")
         )
@@ -53,13 +62,18 @@ def render_sidebar():
         )
 
 
-def header(title, subtitle):
+def header(title, subtitle=None):
+    subtitle_html = (
+        f'<div class="hero-subtitle">{subtitle}</div>'
+        if subtitle
+        else ""
+    )
+
     st.html(
         f"""
         <div class="hero">
-            <div class="hero-kicker">UFPB ACADEMY</div>
             <div class="hero-title">{title}</div>
-            <div class="hero-subtitle">{subtitle}</div>
+            {subtitle_html}
         </div>
         """
     )
