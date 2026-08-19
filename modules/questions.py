@@ -2,6 +2,43 @@ from datetime import date, timedelta
 
 from modules.database import append_record, new_id, records
 
+__all__ = [
+    "history",
+    "questions_between",
+    "record_session",
+    "subject_totals",
+    "totals",
+    "weekly_accuracy_series",
+]
+
+
+def questions_between(start_date, end_date):
+    """Return question totals for an inclusive date range.
+
+    Kept near the top of the module because other planning modules import it
+    during application startup.
+    """
+    total = 0
+    correct = 0
+    wrong = 0
+
+    for row in records("Questoes"):
+        try:
+            day = date.fromisoformat(str(row.get("data")))
+            if start_date <= day <= end_date:
+                total += int(row.get("feitas", 0) or 0)
+                correct += int(row.get("acertos", 0) or 0)
+                wrong += int(row.get("erros", 0) or 0)
+        except (TypeError, ValueError):
+            continue
+
+    return {
+        "total": total,
+        "correct": correct,
+        "wrong": wrong,
+        "accuracy": correct / total if total else 0,
+    }
+
 
 def record_session(mission, total, correct, wrong):
     total = int(total)
@@ -49,29 +86,6 @@ def totals():
         "correct": correct,
         "wrong": wrong,
         "accuracy": accuracy,
-    }
-
-
-def questions_between(start_date, end_date):
-    total = 0
-    correct = 0
-    wrong = 0
-
-    for row in records("Questoes"):
-        try:
-            day = date.fromisoformat(str(row.get("data")))
-            if start_date <= day <= end_date:
-                total += int(row.get("feitas", 0) or 0)
-                correct += int(row.get("acertos", 0) or 0)
-                wrong += int(row.get("erros", 0) or 0)
-        except (TypeError, ValueError):
-            continue
-
-    return {
-        "total": total,
-        "correct": correct,
-        "wrong": wrong,
-        "accuracy": correct / total if total else 0,
     }
 
 
