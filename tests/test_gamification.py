@@ -152,11 +152,10 @@ def test_award_xp_once_does_not_mutate_cache_when_batch_fails(monkeypatch):
         lambda name: deepcopy(tables[name]),
     )
     monkeypatch.setattr(gamification, "new_id", lambda: "event-3")
-    monkeypatch.setattr(
-        gamification,
-        "write_values_batch",
-        lambda _updates: (_ for _ in ()).throw(RuntimeError("API indisponível")),
-    )
+    def fail_write(_updates):
+        raise RuntimeError("API indisponível")
+
+    monkeypatch.setattr(gamification, "write_values_batch", fail_write)
 
     with pytest.raises(RuntimeError, match="API indisponível"):
         gamification.award_xp_once(
@@ -207,21 +206,19 @@ def test_award_xp_once_serializes_concurrent_duplicate_events(monkeypatch):
 
 
 def test_non_positive_award_has_no_side_effects(monkeypatch):
-    monkeypatch.setattr(
-        gamification,
-        "records",
-        lambda _name: (_ for _ in ()).throw(AssertionError("unexpected read")),
-    )
+    def fail_read(_name):
+        raise AssertionError("unexpected read")
+
+    monkeypatch.setattr(gamification, "records", fail_read)
 
     assert gamification.award_xp_once("noop", 0, "teste", "Nada") == 0
 
 
 def test_award_requires_a_non_empty_event_key(monkeypatch):
-    monkeypatch.setattr(
-        gamification,
-        "records",
-        lambda _name: (_ for _ in ()).throw(AssertionError("unexpected read")),
-    )
+    def fail_read(_name):
+        raise AssertionError("unexpected read")
+
+    monkeypatch.setattr(gamification, "records", fail_read)
 
     with pytest.raises(ValueError, match="identificador único"):
         gamification.award_xp_once("  ", 10, "teste", "Nada")

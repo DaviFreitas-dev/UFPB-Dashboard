@@ -13,11 +13,6 @@ __all__ = [
 
 
 def questions_between(start_date, end_date):
-    """Return question totals for an inclusive date range.
-
-    Kept near the top of the module because other planning modules import it
-    during application startup.
-    """
     total = 0
     correct = 0
     wrong = 0
