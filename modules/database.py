@@ -1,4 +1,5 @@
 import json
+import re
 import uuid
 from datetime import date
 
@@ -193,6 +194,25 @@ def write_values_batch(updates):
         )
         names.append(name)
 
+    required_rows = {}
+    for update in updates:
+        row_numbers = [
+            int(value)
+            for value in re.findall(r"[A-Za-z]+(\d+)", update["range"])
+        ]
+        if row_numbers:
+            name = update["sheet"]
+            required_rows[name] = max(
+                required_rows.get(name, 0),
+                max(row_numbers),
+            )
+
+    for name, required in required_rows.items():
+        worksheet = get_worksheet(name)
+        current = int(worksheet.row_count)
+        if required > current:
+            worksheet.add_rows(required - current)
+
     connect_sheet().values_batch_update(
         {
             "valueInputOption": "USER_ENTERED",
@@ -267,20 +287,28 @@ def get_user(key, default=None):
 
 def set_user(key, value):
     rows = records("Usuario")
-    found = False
-
-    for row in rows:
+    for row_number, row in enumerate(rows, start=2):
         if str(row.get("chave")) == key:
-            row["valor"] = str(value)
-            found = True
-            break
+            write_values_batch(
+                [
+                    {
+                        "sheet": "Usuario",
+                        "range": f"B{row_number}",
+                        "values": [[str(value)]],
+                    }
+                ]
+            )
+            return
 
-    if not found:
-        rows.append({"chave": key, "valor": str(value)})
-
-    replace_records(
-        "Usuario",
-        [[row["chave"], row["valor"]] for row in rows],
+    row_number = len(rows) + 2
+    write_values_batch(
+        [
+            {
+                "sheet": "Usuario",
+                "range": f"A{row_number}:B{row_number}",
+                "values": [[key, str(value)]],
+            }
+        ]
     )
 
 
@@ -406,30 +434,43 @@ def update_cycle(values):
 def add_history(hours, xp):
     today = str(date.today())
     rows = records("Historico")
-    found = False
-
-    for row in rows:
+    for row_number, row in enumerate(rows, start=2):
         if str(row.get("data")) == today:
-            row["horas"] = int(row.get("horas", 0)) + int(hours)
-            row["xp"] = int(row.get("xp", 0)) + int(xp)
-            found = True
-            break
+            try:
+                current_hours = int(row.get("horas", 0) or 0)
+            except (TypeError, ValueError):
+                current_hours = 0
+            try:
+                current_xp = int(row.get("xp", 0) or 0)
+            except (TypeError, ValueError):
+                current_xp = 0
 
-    if not found:
-        rows.append(
-            {
-                "data": today,
-                "horas": int(hours),
-                "xp": int(xp),
-            }
-        )
+            write_values_batch(
+                [
+                    {
+                        "sheet": "Historico",
+                        "range": f"A{row_number}:C{row_number}",
+                        "values": [
+                            [
+                                today,
+                                current_hours + int(hours),
+                                current_xp + int(xp),
+                            ]
+                        ],
+                    }
+                ]
+            )
+            return
 
-    replace_records(
-        "Historico",
+    row_number = len(rows) + 2
+    write_values_batch(
         [
-            [row.get("data", ""), row.get("horas", 0), row.get("xp", 0)]
-            for row in rows
-        ],
+            {
+                "sheet": "Historico",
+                "range": f"A{row_number}:C{row_number}",
+                "values": [[today, int(hours), int(xp)]],
+            }
+        ]
     )
 
 

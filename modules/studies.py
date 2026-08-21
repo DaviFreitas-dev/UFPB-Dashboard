@@ -1,15 +1,11 @@
 import random
 from datetime import date, timedelta
 
-from modules.config import XP_POR_HORA, XP_POR_NIVEL
+from modules.config import XP_POR_NIVEL
 from modules.database import (
-    add_history,
     get_config,
     get_cycle,
     get_history,
-    get_xp,
-    set_xp,
-    update_cycle,
 )
 
 
@@ -115,27 +111,3 @@ def draw_mission(hours, environment):
             del available[subject]
 
     return mission
-
-
-def complete_mission(mission):
-    hours = sum(int(value) for value in mission.values())
-
-    if hours <= 0:
-        return 0, 0
-
-    cycle = get_cycle()
-
-    for row in cycle:
-        subject = row.get("disciplina")
-
-        if subject in mission:
-            row["restantes"] = max(
-                0,
-                int(row.get("restantes", 0) or 0) - int(mission[subject]),
-            )
-
-    update_cycle(cycle)
-    xp = hours * XP_POR_HORA
-    set_xp(get_xp() + xp)
-    add_history(hours, xp)
-    return hours, xp
