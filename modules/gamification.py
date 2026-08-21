@@ -8,18 +8,77 @@ from modules.database import (
 )
 
 
-XP_WRITE_LOCK = threading.RLock()
+_XP_WRITE_LOCK = threading.RLock()
 
 
-def _safe_int(value, default=0):
+def _as_int(value, default=0):
     try:
         return int(value)
     except (TypeError, ValueError):
         return default
 
 
+def _find_row(rows, field, value):
+    return next(
+        (row for row in rows if str(row.get(field)) == str(value)),
+        None,
+    )
+
+
+def xp_write_lock():
+    return _XP_WRITE_LOCK
+
+
+def build_xp_balance_updates(
+    user_rows,
+    history_rows,
+    amount,
+    hours=0,
+    day=None,
+):
+    """Monta as atualizações de saldo e histórico para o lote do evento."""
+    day = str(day or date.today())
+    amount = int(amount)
+    hours = int(hours)
+
+    xp_row = _find_row(user_rows, "chave", "xp")
+    if xp_row is None:
+        user_row_number = len(user_rows) + 2
+        user_update = {
+            "sheet": "Usuario",
+            "range": f"A{user_row_number}:B{user_row_number}",
+            "values": [["xp", str(amount)]],
+        }
+    else:
+        current_xp = max(0, _as_int(xp_row.get("valor")))
+        user_row_number = user_rows.index(xp_row) + 2
+        user_update = {
+            "sheet": "Usuario",
+            "range": f"B{user_row_number}",
+            "values": [[str(current_xp + amount)]],
+        }
+
+    history_row = _find_row(history_rows, "data", day)
+    if history_row is None:
+        history_row_number = len(history_rows) + 2
+        history_values = [day, hours, amount]
+    else:
+        history_row_number = history_rows.index(history_row) + 2
+        history_values = [
+            day,
+            _as_int(history_row.get("horas")) + hours,
+            _as_int(history_row.get("xp")) + amount,
+        ]
+
+    history_update = {
+        "sheet": "Historico",
+        "range": f"A{history_row_number}:C{history_row_number}",
+        "values": [history_values],
+    }
+    return [user_update, history_update]
+
+
 def award_xp_once(event_key, amount, source, description):
-    """Record one reward and its derived balances in a single Sheets batch."""
     amount = max(0, int(amount))
     if amount <= 0:
         return 0
@@ -28,26 +87,14 @@ def award_xp_once(event_key, amount, source, description):
     if not event_key:
         raise ValueError("A recompensa precisa de um identificador único.")
 
-    with XP_WRITE_LOCK:
+    with xp_write_lock():
         xp_events = records("XPEventos")
-
-        if any(
-            str(row.get("event_key")) == event_key
-            for row in xp_events
-        ):
+        if _find_row(xp_events, "event_key", event_key) is not None:
             return 0
 
-        tables = {
-            "XPEventos": xp_events,
-            "Usuario": records("Usuario"),
-            "Historico": records("Historico"),
-        }
-
         today = str(date.today())
-        updates = []
-
-        event_row_number = len(tables["XPEventos"]) + 2
-        updates.append(
+        event_row_number = len(xp_events) + 2
+        updates = [
             {
                 "sheet": "XPEventos",
                 "range": f"A{event_row_number}:F{event_row_number}",
@@ -62,60 +109,14 @@ def award_xp_once(event_key, amount, source, description):
                     ]
                 ],
             }
-        )
-
-        xp_row = next(
-            (
-                row
-                for row in tables["Usuario"]
-                if str(row.get("chave")) == "xp"
-            ),
-            None,
-        )
-        if xp_row is None:
-            user_row_number = len(tables["Usuario"]) + 2
-            updates.append(
-                {
-                    "sheet": "Usuario",
-                    "range": f"A{user_row_number}:B{user_row_number}",
-                    "values": [["xp", str(amount)]],
-                }
+        ]
+        updates.extend(
+            build_xp_balance_updates(
+                records("Usuario"),
+                records("Historico"),
+                amount,
+                day=today,
             )
-        else:
-            current_xp = max(0, _safe_int(xp_row.get("valor")))
-            user_row_number = tables["Usuario"].index(xp_row) + 2
-            updates.append(
-                {
-                    "sheet": "Usuario",
-                    "range": f"B{user_row_number}",
-                    "values": [[str(current_xp + amount)]],
-                }
-            )
-
-        history_row = next(
-            (
-                row
-                for row in tables["Historico"]
-                if str(row.get("data")) == today
-            ),
-            None,
-        )
-        if history_row is None:
-            history_row_number = len(tables["Historico"]) + 2
-            history_values = [today, 0, amount]
-        else:
-            history_row_number = tables["Historico"].index(history_row) + 2
-            history_values = [
-                today,
-                _safe_int(history_row.get("horas")),
-                _safe_int(history_row.get("xp")) + amount,
-            ]
-        updates.append(
-            {
-                "sheet": "Historico",
-                "range": f"A{history_row_number}:C{history_row_number}",
-                "values": [history_values],
-            }
         )
 
         write_values_batch(updates)

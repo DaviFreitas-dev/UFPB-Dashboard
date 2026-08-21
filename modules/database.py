@@ -13,7 +13,7 @@ from modules.config import CICLO_PADRAO, SHEETS, XP_POR_HORA
 
 
 class SheetSchemaError(RuntimeError):
-    """Raised when an existing worksheet has an unexpected header."""
+    """O cabeçalho de uma aba existente não corresponde ao schema atual."""
 
 
 _HEADER_NOT_PROVIDED = object()
@@ -174,7 +174,7 @@ def append_record(name, values):
 
 
 def write_values_batch(updates):
-    """Write multiple ranges atomically and invalidate only affected caches."""
+    """Grava vários intervalos de uma vez e limpa os caches afetados."""
     if not updates:
         return
 

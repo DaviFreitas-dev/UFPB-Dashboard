@@ -1,4 +1,5 @@
 from copy import deepcopy
+from datetime import date
 
 import pytest
 
@@ -142,6 +143,7 @@ def test_mission_completion_is_atomic_and_idempotent(monkeypatch):
     }
     assert ranges[("Ciclo", "B2")] == [[1]]
     assert ranges[("Usuario", "B2")] == [["335"]]
+    assert ranges[("Historico", "A2:C2")] == [[str(date.today()), 2, 235]]
     assert ranges[("SessoesEstudo", "A2:I2")][0][0] == "session-1"
     assert len(ranges[("Revisoes", "A2:G4")]) == 3
     assert ranges[("Erros", "A2:G2")][0][4] == 2
@@ -163,11 +165,10 @@ def test_mission_completion_rejects_a_stale_cycle(monkeypatch):
         "records",
         lambda name: deepcopy(tables[name]),
     )
-    monkeypatch.setattr(
-        study_sessions,
-        "write_values_batch",
-        lambda _updated: (_ for _ in ()).throw(AssertionError("unexpected write")),
-    )
+    def fail_write(_updates):
+        raise AssertionError("unexpected write")
+
+    monkeypatch.setattr(study_sessions, "write_values_batch", fail_write)
 
     with pytest.raises(study_sessions.MissionConsistencyError, match="mudou"):
         study_sessions.complete_study_session(

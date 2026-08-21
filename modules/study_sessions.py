@@ -6,14 +6,11 @@ from modules.database import (
     records,
     write_values_batch,
 )
-from modules.gamification import XP_WRITE_LOCK
+from modules.gamification import build_xp_balance_updates, xp_write_lock
 
 
 class MissionConsistencyError(RuntimeError):
-    """Raised when a pending mission no longer matches the current cycle."""
-
-
-_MISSION_WRITE_LOCK = XP_WRITE_LOCK
+    """A missão sorteada não corresponde mais ao estado atual do ciclo."""
 
 
 def _derived_id(session_id, suffix):
@@ -21,11 +18,101 @@ def _derived_id(session_id, suffix):
     return hashlib.sha256(value).hexdigest()[:10]
 
 
-def _safe_int(value, default=0):
+def _as_int(value, default=0):
     try:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _find_row(rows, field, value):
+    return next(
+        (row for row in rows if str(row.get(field)) == str(value)),
+        None,
+    )
+
+
+def _normalize_mission(mission):
+    normalized = {}
+    for subject, amount in mission.items():
+        hours = int(amount)
+        if not subject or hours <= 0:
+            raise ValueError("A missão possui uma carga horária inválida.")
+        normalized[str(subject)] = hours
+    return normalized
+
+
+def _completed_result(
+    session_id,
+    xp_events,
+    base_event_key,
+    question_event_key,
+    hours,
+    total,
+    correct,
+):
+    base_event = _find_row(xp_events, "event_key", base_event_key)
+    if base_event is None:
+        return None
+
+    session = _find_row(records("SessoesEstudo"), "id", session_id)
+    if session is None:
+        raise MissionConsistencyError(
+            "A missão possui recompensa registrada, mas a sessão não foi "
+            "encontrada. Revise o backup antes de tentar novamente."
+        )
+
+    question_event = _find_row(
+        xp_events,
+        "event_key",
+        question_event_key,
+    )
+    return {
+        "id": session_id,
+        "hours": _as_int(session.get("horas"), hours),
+        "base_xp": _as_int(base_event.get("xp")),
+        "question_xp": _as_int(
+            question_event.get("xp") if question_event else 0
+        ),
+        "questions": _as_int(session.get("questoes"), total),
+        "correct": _as_int(session.get("acertos"), correct),
+        "already_completed": True,
+    }
+
+
+def _cycle_updates(cycle_rows, mission):
+    updates = []
+    missing_subjects = set(mission)
+
+    for row_number, row in enumerate(cycle_rows, start=2):
+        subject = str(row.get("disciplina", ""))
+        if subject not in mission:
+            continue
+
+        remaining = _as_int(row.get("restantes"))
+        requested = mission[subject]
+        if remaining < requested:
+            raise MissionConsistencyError(
+                f"O ciclo de {subject} mudou desde o sorteio. "
+                "Cancele esta missão e sorteie outra."
+            )
+
+        updates.append(
+            {
+                "sheet": "Ciclo",
+                "range": f"B{row_number}",
+                "values": [[remaining - requested]],
+            }
+        )
+        missing_subjects.discard(subject)
+
+    if missing_subjects:
+        subjects = ", ".join(sorted(missing_subjects))
+        raise MissionConsistencyError(
+            f"As disciplinas não existem mais no ciclo: {subjects}."
+        )
+
+    return updates
 
 
 def question_xp(total, correct):
@@ -57,8 +144,7 @@ def complete_study_session(
     wrong,
     note="",
 ):
-    """Persist a completed mission as one serialized, idempotent batch."""
-    with _MISSION_WRITE_LOCK:
+    with xp_write_lock():
         return _complete_study_session(
             session_id,
             mission,
@@ -93,13 +179,7 @@ def _complete_study_session(
     if correct + wrong != total:
         raise ValueError("Acertos + erros precisam ser iguais ao total.")
 
-    normalized_mission = {}
-    for subject, amount in mission.items():
-        hours = int(amount)
-        if not subject or hours <= 0:
-            raise ValueError("A missão possui uma carga horária inválida.")
-        normalized_mission[str(subject)] = hours
-
+    normalized_mission = _normalize_mission(mission)
     hours = sum(normalized_mission.values())
     if hours <= 0:
         raise ValueError("A missão precisa ter ao menos uma hora.")
@@ -109,52 +189,19 @@ def _complete_study_session(
     base_event_key = f"session:{session_id}:mission"
     question_event_key = f"session:{session_id}:questions"
     xp_events = records("XPEventos")
-    existing_base_event = next(
-        (
-            row
-            for row in xp_events
-            if str(row.get("event_key")) == base_event_key
-        ),
-        None,
+    completed = _completed_result(
+        session_id,
+        xp_events,
+        base_event_key,
+        question_event_key,
+        hours,
+        total,
+        correct,
     )
+    if completed:
+        return completed
 
-    if existing_base_event:
-        existing_session = next(
-            (
-                row
-                for row in records("SessoesEstudo")
-                if str(row.get("id")) == session_id
-            ),
-            None,
-        )
-        if existing_session is None:
-            raise MissionConsistencyError(
-                "A missão possui recompensa registrada, mas a sessão não foi "
-                "encontrada. Revise o backup antes de tentar novamente."
-            )
-        existing_question_event = next(
-            (
-                row
-                for row in xp_events
-                if str(row.get("event_key")) == question_event_key
-            ),
-            None,
-        )
-        return {
-            "id": session_id,
-            "hours": _safe_int(existing_session.get("horas"), hours),
-            "base_xp": _safe_int(existing_base_event.get("xp")),
-            "question_xp": _safe_int(
-                existing_question_event.get("xp")
-                if existing_question_event
-                else 0
-            ),
-            "questions": _safe_int(existing_session.get("questoes"), total),
-            "correct": _safe_int(existing_session.get("acertos"), correct),
-            "already_completed": True,
-        }
-
-    tables = {
+    rows_by_sheet = {
         name: records(name)
         for name in (
             "Ciclo",
@@ -166,98 +213,31 @@ def _complete_study_session(
             "Erros",
         )
     }
-    tables["XPEventos"] = xp_events
+    rows_by_sheet["XPEventos"] = xp_events
 
-    updates = []
-    remaining_subjects = set(normalized_mission)
-    for row_number, row in enumerate(tables["Ciclo"], start=2):
-        subject = str(row.get("disciplina", ""))
-        if subject not in normalized_mission:
-            continue
-        remaining = _safe_int(row.get("restantes"))
-        requested = normalized_mission[subject]
-        if remaining < requested:
-            raise MissionConsistencyError(
-                f"O ciclo de {subject} mudou desde o sorteio. "
-                "Cancele esta missão e sorteie outra."
-            )
-        updates.append(
-            {
-                "sheet": "Ciclo",
-                "range": f"B{row_number}",
-                "values": [[remaining - requested]],
-            }
-        )
-        remaining_subjects.discard(subject)
-
-    if remaining_subjects:
-        subjects = ", ".join(sorted(remaining_subjects))
-        raise MissionConsistencyError(
-            f"As disciplinas não existem mais no ciclo: {subjects}."
-        )
+    updates = _cycle_updates(
+        rows_by_sheet["Ciclo"],
+        normalized_mission,
+    )
 
     bonus_xp = question_xp(total, correct)
     base_xp = hours * XP_POR_HORA
     total_xp = base_xp + bonus_xp
-
-    xp_row = next(
-        (
-            row
-            for row in tables["Usuario"]
-            if str(row.get("chave")) == "xp"
-        ),
-        None,
-    )
-    if xp_row is None:
-        user_row_number = len(tables["Usuario"]) + 2
-        updates.append(
-            {
-                "sheet": "Usuario",
-                "range": f"A{user_row_number}:B{user_row_number}",
-                "values": [["xp", str(total_xp)]],
-            }
+    today = date.today()
+    today_text = str(today)
+    updates.extend(
+        build_xp_balance_updates(
+            rows_by_sheet["Usuario"],
+            rows_by_sheet["Historico"],
+            total_xp,
+            hours=hours,
+            day=today_text,
         )
-    else:
-        current_xp = max(0, _safe_int(xp_row.get("valor")))
-        user_row_number = tables["Usuario"].index(xp_row) + 2
-        updates.append(
-            {
-                "sheet": "Usuario",
-                "range": f"B{user_row_number}",
-                "values": [[str(current_xp + total_xp)]],
-            }
-        )
-
-    today = str(date.today())
-    history_row = next(
-        (
-            row
-            for row in tables["Historico"]
-            if str(row.get("data")) == today
-        ),
-        None,
-    )
-    if history_row is None:
-        history_row_number = len(tables["Historico"]) + 2
-        history_values = [today, hours, total_xp]
-    else:
-        history_row_number = tables["Historico"].index(history_row) + 2
-        history_values = [
-            today,
-            _safe_int(history_row.get("horas")) + hours,
-            _safe_int(history_row.get("xp")) + total_xp,
-        ]
-    updates.append(
-        {
-            "sheet": "Historico",
-            "range": f"A{history_row_number}:C{history_row_number}",
-            "values": [history_values],
-        }
     )
 
     topic_text = str(topic).strip() or "Revisão geral"
     note_text = str(note).strip()
-    session_row_number = len(tables["SessoesEstudo"]) + 2
+    session_row_number = len(rows_by_sheet["SessoesEstudo"]) + 2
     updates.append(
         {
             "sheet": "SessoesEstudo",
@@ -265,7 +245,7 @@ def _complete_study_session(
             "values": [
                 [
                     session_id,
-                    today,
+                    today_text,
                     primary_subject,
                     topic_text,
                     hours,
@@ -278,7 +258,7 @@ def _complete_study_session(
         }
     )
 
-    question_row_number = len(tables["Questoes"]) + 2
+    question_row_number = len(rows_by_sheet["Questoes"]) + 2
     updates.append(
         {
             "sheet": "Questoes",
@@ -286,7 +266,7 @@ def _complete_study_session(
             "values": [
                 [
                     _derived_id(session_id, "questions"),
-                    today,
+                    today_text,
                     " | ".join(normalized_mission),
                     total,
                     correct,
@@ -302,15 +282,15 @@ def _complete_study_session(
             review_values.append(
                 [
                     _derived_id(session_id, f"review:{subject}:{days}"),
-                    today,
-                    str(date.today() + timedelta(days=days)),
+                    today_text,
+                    str(today + timedelta(days=days)),
                     subject,
                     topic_text,
                     "Pendente",
                     f"session:{session_id}:{subject}:{days}",
                 ]
             )
-    review_start = len(tables["Revisoes"]) + 2
+    review_start = len(rows_by_sheet["Revisoes"]) + 2
     review_end = review_start + len(review_values) - 1
     updates.append(
         {
@@ -321,7 +301,7 @@ def _complete_study_session(
     )
 
     if wrong > 0:
-        error_row_number = len(tables["Erros"]) + 2
+        error_row_number = len(rows_by_sheet["Erros"]) + 2
         updates.append(
             {
                 "sheet": "Erros",
@@ -329,7 +309,7 @@ def _complete_study_session(
                 "values": [
                     [
                         _derived_id(session_id, "error"),
-                        today,
+                        today_text,
                         primary_subject,
                         topic_text,
                         wrong,
@@ -344,7 +324,7 @@ def _complete_study_session(
         [
             _derived_id(session_id, "xp:mission"),
             base_event_key,
-            today,
+            today_text,
             "missao",
             "Missão de estudo concluída",
             base_xp,
@@ -355,13 +335,13 @@ def _complete_study_session(
             [
                 _derived_id(session_id, "xp:questions"),
                 question_event_key,
-                today,
+                today_text,
                 "questoes",
                 "Questões e desempenho da sessão",
                 bonus_xp,
             ]
         )
-    xp_event_start = len(tables["XPEventos"]) + 2
+    xp_event_start = len(rows_by_sheet["XPEventos"]) + 2
     xp_event_end = xp_event_start + len(xp_event_values) - 1
     updates.append(
         {

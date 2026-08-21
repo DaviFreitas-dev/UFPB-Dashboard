@@ -28,7 +28,12 @@ def check():
         ("4", "100 questões", "Resolva 100 questões.", questions["total"] >= 100),
         ("5", "500 questões", "Resolva 500 questões.", questions["total"] >= 500),
         ("6", "1.000 questões", "Resolva 1.000 questões.", questions["total"] >= 1000),
-        ("7", "Precisão", "Mantenha 80% de acerto em pelo menos 100 questões.", questions["total"] >= 100 and questions["accuracy"] >= 0.80),
+        (
+            "7",
+            "Precisão",
+            "Mantenha 80% de acerto em pelo menos 100 questões.",
+            questions["total"] >= 100 and questions["accuracy"] >= 0.80,
+        ),
         ("8", "Uma semana", "Mantenha uma sequência geral de 7 dias.", streak >= 7),
         ("9", "Revisor", "Conclua 10 revisões programadas.", reviews_done >= 10),
         ("10", "Boss derrotado", "Conclua uma prova cadastrada.", bosses_done >= 1),
