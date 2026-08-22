@@ -8,7 +8,7 @@ from modules.study_sessions import (
     MissionConsistencyError,
     complete_study_session,
 )
-from modules.ui import header, section
+from modules.ui import header, section, without_emoji
 
 
 def render_pomodoro(minutes):
@@ -23,7 +23,7 @@ def render_pomodoro(minutes):
             <div id="timer">{minutes:02d}:00</div>
             <div id="status">Pronto para começar</div>
             <div class="timer-actions">
-                <button class="primary" onclick="startTimer()">▶ Iniciar</button>
+                <button class="primary" onclick="startTimer()">Iniciar</button>
                 <button onclick="pauseTimer()">Pausar</button>
                 <button onclick="resetTimer()">Reiniciar</button>
             </div>
@@ -35,19 +35,18 @@ def render_pomodoro(minutes):
             .timer-shell {{
                 position: relative;
                 overflow: hidden;
-                background: radial-gradient(circle at 88% 10%, rgba(78,214,255,.10), transparent 30%), linear-gradient(145deg, #0e1d3f, #081229);
-                border: 1px solid rgba(104,142,211,.20);
-                border-radius: 15px;
+                background: #15181d;
+                border: 1px solid #2a2f37;
+                border-radius: 12px;
                 padding: 28px;
                 text-align: center;
-                color: #f6f8ff;
-                box-shadow: 0 18px 48px rgba(0,0,0,.24);
+                color: #f2f4f7;
             }}
             .timer-topline {{
                 display: inline-flex;
                 align-items: center;
                 gap: 7px;
-                color: #8194ba;
+                color: #8f96a3;
                 font-size: 10px;
                 font-weight: 850;
                 letter-spacing: .16em;
@@ -56,8 +55,7 @@ def render_pomodoro(minutes):
                 width: 6px;
                 height: 6px;
                 border-radius: 50%;
-                background: #4ed6ff;
-                box-shadow: 0 0 12px rgba(78,214,255,.7);
+                background: #7692ff;
             }}
             #timer {{
                 font-size: 62px;
@@ -67,21 +65,21 @@ def render_pomodoro(minutes):
                 margin: 18px 0 9px;
                 font-variant-numeric: tabular-nums;
             }}
-            #status {{ color: #7f90b3; font-size: 13px; margin-bottom: 22px; }}
+            #status {{ color: #9198a5; font-size: 13px; margin-bottom: 22px; }}
             .timer-actions {{ display: flex; gap: 9px; justify-content: center; flex-wrap: wrap; }}
             button {{
                 min-width: 96px;
-                border: 1px solid rgba(75,126,255,.24);
-                background: rgba(15,31,67,.94);
-                color: #eaf0ff;
+                border: 1px solid #303640;
+                background: #1c2026;
+                color: #e5e8ed;
                 border-radius: 9px;
                 padding: 10px 15px;
                 font-weight: 750;
                 cursor: pointer;
                 transition: all .15s ease;
             }}
-            button:hover {{ background: #162c5d; border-color: rgba(78,214,255,.42); transform: translateY(-1px); }}
-            button.primary {{ background: linear-gradient(135deg, #416fff, #2957ee); color: white; box-shadow: 0 9px 24px rgba(47,98,255,.24); }}
+            button:hover {{ background: #242931; border-color: #465062; }}
+            button.primary {{ background: #6f8cff; border-color: #6f8cff; color: #0d1015; }}
         </style>
 
         <script>
@@ -139,8 +137,8 @@ def render_review(mission):
     st.html(
         f"""
         <div class="question-review">
-            <div class="question-review-label">FECHAMENTO DA MISSÃO</div>
-            <div class="question-review-title">Como foi a sessão?</div>
+            <div class="question-review-label">FECHAR MISSÃO</div>
+            <div class="question-review-title">Registre o que foi feito</div>
             <div class="question-review-meta">{total_hours}h planejadas</div>
         </div>
         """
@@ -149,10 +147,14 @@ def render_review(mission):
     subjects = list(mission.keys())
 
     with st.form("mission_review_form"):
-        primary_subject = st.selectbox("Disciplina principal", subjects)
+        primary_subject = st.selectbox(
+            "Disciplina principal",
+            subjects,
+            format_func=without_emoji,
+        )
         topic = st.text_input(
             "Assunto estudado",
-            placeholder="Ex.: Cinemática, funções, estequiometria...",
+            placeholder="Ex.: Cinemática ou funções",
         )
 
         col_total, col_correct, col_wrong = st.columns(3)
@@ -164,8 +166,8 @@ def render_review(mission):
             wrong = st.number_input("Erros", min_value=0, step=1, value=0)
 
         note = st.text_area(
-            "Nota rápida / o que precisa melhorar",
-            placeholder="Opcional. Se houver erros, isso entra no caderno de erros.",
+            "Observações",
+            placeholder="Opcional. Anote o que precisa revisar.",
             height=90,
         )
 
@@ -209,13 +211,13 @@ def render_review(mission):
         }
         st.rerun()
 
-    if st.button("← Voltar", use_container_width=True):
+    if st.button("Voltar", use_container_width=True):
         st.session_state["mission_review"] = None
         st.rerun()
 
 
 def render():
-    header("Missões", "Sorteie uma sessão, foque e registre o resultado.")
+    header("Missões", "Defina a sessão e registre o resultado.")
 
     if "pending_mission" not in st.session_state:
         st.session_state["pending_mission"] = None
@@ -239,7 +241,7 @@ def render():
                 <div class="mission-kicker">MISSÃO ATIVA</div>
                 <div class="mission-title">Sessão em andamento</div>
                 <div class="mission-hours">{total_hours}h</div>
-                <div class="mission-meta">Conclua o bloco e registre seu desempenho no fechamento.</div>
+                <div class="mission-meta">Ao terminar, registre as horas e as questões.</div>
             </div>
             """
         )
@@ -250,10 +252,11 @@ def render():
         }
 
         for subject, hours in mission.items():
+            subject_label = without_emoji(subject)
             st.html(
                 f"""
                 <div class="mission">
-                    <div class="mission-title">{subject}</div>
+                    <div class="mission-title">{subject_label}</div>
                     <div class="mission-meta">
                         <span class="badge">{config.get(subject, 'Ambos')}</span>
                         • {hours}h • +{hours * XP_POR_HORA} XP
@@ -278,7 +281,7 @@ def render():
         with st.container(border=True):
             mode = st.radio(
                 "Ambiente",
-                ["🔄 Qualquer ambiente", "🚌 Transporte", "🖥️ Mesa"],
+                ["Qualquer ambiente", "Transporte", "Mesa"],
                 horizontal=True,
             )
             hours = st.slider("Horas", 1, 6, 3)
@@ -308,9 +311,9 @@ def render():
         total_xp = completion["base_xp"] + completion["bonus_xp"]
 
         st.success(
-            f"Concluída: {completion['hours']}h • +{total_xp} XP • "
-            f"{total} questões • {accuracy:.0f}% de acerto. "
-            "Revisões 1-7-30 foram agendadas."
+            f"Missão concluída: {completion['hours']}h, {total_xp} XP e "
+            f"{accuracy:.0f}% de acerto em {total} questões. "
+            "Revisões marcadas para 1, 7 e 30 dias."
         )
 
     st.write("")

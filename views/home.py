@@ -23,11 +23,11 @@ from modules.planner import (
 from modules.reading import all_books, remaining_today
 from modules.routine import today_records as routine_today
 from modules.routine import toggle as toggle_routine
-from modules.studies import calculate_level, stats
+from modules.studies import calculate_level
 from modules.tasks import add as add_task
 from modules.tasks import today_records as tasks_today
 from modules.tasks import toggle as toggle_task
-from modules.ui import header, section
+from modules.ui import header, section, without_emoji
 
 
 MONTHS_PT = [
@@ -47,7 +47,7 @@ MONTHS_PT = [
 
 
 def render_quick_capture():
-    with st.expander("＋ Captura rápida"):
+    with st.expander("Captura rápida"):
         capture_type = st.radio(
             "Tipo",
             ["Tarefa", "Amanhã", "Diário"],
@@ -79,7 +79,7 @@ def render_quick_capture():
             with st.form("home_quick_tomorrow", clear_on_submit=True):
                 priority = st.text_input(
                     "Prioridade",
-                    placeholder="Uma das 3 coisas mais importantes de amanhã",
+                    placeholder="Uma das três prioridades de amanhã",
                 )
                 submitted = st.form_submit_button(
                     "Adicionar para amanhã",
@@ -94,7 +94,7 @@ def render_quick_capture():
                 ):
                     st.rerun()
                 else:
-                    st.warning("Amanhã já tem 3 prioridades.")
+                    st.warning("Amanhã já tem três prioridades.")
 
         else:
             with st.form("home_quick_journal", clear_on_submit=True):
@@ -114,11 +114,11 @@ def render_quick_capture():
                 st.rerun()
 
 
-def render_top_cards(xp, level, streak, study_stats, goal):
+def render_top_cards(xp, level, streak, goal):
     left, middle, right = st.columns([1, 1, 1.28], gap="small")
 
     cards = [
-        (left, "⚡", "XP TOTAL", f"{xp:,}".replace(",", "."), f"nível {level}"),
+        (left, "", "XP TOTAL", f"{xp:,}".replace(",", "."), f"nível {level}"),
         (middle, "🔥", "SEQUÊNCIA", str(streak), "dias ativos"),
     ]
 
@@ -137,6 +137,12 @@ def render_top_cards(xp, level, streak, study_stats, goal):
 
     progress_percent = round(goal["progress"] * 100)
     progress_degrees = round(goal["progress"] * 360)
+    remaining_questions = max(goal["target"] - goal["done"], 0)
+    goal_copy = (
+        "Meta concluída."
+        if remaining_questions == 0
+        else f"Faltam {remaining_questions} questões nesta semana."
+    )
 
     with right:
         st.html(
@@ -149,9 +155,7 @@ def render_top_cards(xp, level, streak, study_stats, goal):
                     <div>
                         <div class="dashboard-card-label">QUESTÕES DA SEMANA</div>
                         <div class="dashboard-card-title">{goal['done']} de {goal['target']}</div>
-                        <div class="dashboard-card-copy">
-                            {study_stats['hours']}h estudadas no histórico total. Continue avançando sem quebrar a sequência.
-                        </div>
+                        <div class="dashboard-card-copy">{goal_copy}</div>
                     </div>
                 </div>
             </div>
@@ -164,7 +168,6 @@ def render():
     tomorrow = today + timedelta(days=1)
     xp = get_xp()
     level, _, _, _ = calculate_level(xp)
-    study_stats = stats()
     streak = general_streak()
     goal = weekly_goal_progress()
 
@@ -182,7 +185,7 @@ def render():
     date_text = f"{today.day} de {MONTHS_PT[today.month - 1]} de {today.year}"
 
     header("Hoje", date_text)
-    render_top_cards(xp, level, streak, study_stats, goal)
+    render_top_cards(xp, level, streak, goal)
     render_quick_capture()
 
     if deadlines:
@@ -197,12 +200,12 @@ def render():
         countdown = (
             "hoje"
             if days == 0
-            else f"faltam {days} dia(s)"
+            else f"em {days} {'dia' if days == 1 else 'dias'}"
             if days > 0
-            else f"atrasado {abs(days)} dia(s)"
+            else f"{abs(days)} {'dia' if abs(days) == 1 else 'dias'} em atraso"
         )
         title = escape(str(nearest.get("titulo", "")))
-        subject = escape(str(nearest.get("disciplina", "")))
+        subject = escape(without_emoji(nearest.get("disciplina", "")))
         target_text = escape(str(nearest.get("data", "")))
 
         st.html(
@@ -220,13 +223,13 @@ def render():
     with left:
         section("Revisões")
         if not reviews:
-            st.success("Nenhuma revisão pendente.")
+            st.success("Nenhuma revisão para hoje.")
         else:
             for review in reviews[:4]:
                 row_col, action_col = st.columns([5, 2])
                 with row_col:
                     st.write(
-                        f"**{review.get('disciplina', '')}** — "
+                        f"**{without_emoji(review.get('disciplina', ''))}** — "
                         f"{review.get('assunto', '')}"
                     )
                     st.caption(f"Prevista para {review.get('data', '')}")
@@ -241,7 +244,7 @@ def render():
 
         section("Prioridades de hoje")
         if not tasks:
-            st.info("Nenhuma tarefa para hoje.")
+            st.info("Sem tarefas para hoje.")
         else:
             for task in tasks:
                 checked = task.get("status") == "Concluída"
@@ -262,7 +265,7 @@ def render():
             combined.append((str(item.get("hora", "")), "avulsa", item))
 
         if not combined:
-            st.info("Nada marcado para hoje.")
+            st.info("Agenda livre hoje.")
         else:
             for _, kind, item in sorted(combined, key=lambda row: row[0]):
                 if kind == "fixa":
@@ -290,14 +293,14 @@ def render():
     with right:
         section("Amanhã")
         if not tomorrow_priorities:
-            st.info("Nenhuma prioridade definida.")
+            st.info("Sem prioridades definidas.")
         else:
             rows_html = "".join(
                 f"""
                 <div class="data-row">
                     <div class="data-row-main">
                         <div class="data-row-title">{escape(str(item.get('prioridade', '')))}</div>
-                        <div class="data-row-subtitle">prioridade planejada</div>
+                        <div class="data-row-subtitle">Planejada para amanhã</div>
                     </div>
                     <span class="data-chip">amanhã</span>
                 </div>
@@ -321,34 +324,34 @@ def render():
             st.html(
                 f"""
                 <div class="dashboard-card">
-                    <div class="dashboard-card-label">LENDO AGORA</div>
+                    <div class="dashboard-card-label">EM ANDAMENTO</div>
                     <div class="dashboard-card-title">{title}</div>
                     <div class="dashboard-card-copy">{author}</div>
                     <div class="data-row">
                         <div class="data-row-title">Página {current_page} de {total_pages}</div>
-                        <span class="data-chip">+{daily_target} hoje</span>
+                        <span class="data-chip">Meta: {daily_target} páginas</span>
                     </div>
                 </div>
                 """
             )
             st.progress(progress)
         else:
-            st.info("Nenhuma leitura atual.")
+            st.info("Nenhuma leitura em andamento.")
 
         section("Hábitos")
         if not habits:
-            st.info("Nenhum hábito ativo.")
+            st.info("Nenhum hábito cadastrado.")
         else:
             done = sum(habit.get("feito") == "Sim" for habit in habits)
             st.progress(done / len(habits), text=f"{done}/{len(habits)} concluídos")
             for habit in habits:
-                icon = "✓" if habit.get("feito") == "Sim" else "○"
-                st.write(f"{icon} {habit.get('habito', '')}")
+                status = "Feito" if habit.get("feito") == "Sim" else "Pendente"
+                st.caption(f"{habit.get('habito', '')} · {status}")
 
         section("Atividade")
         if activities:
             for item in activities:
-                st.success(f"✓ {item.get('tipo', '')}")
+                st.success(item.get("tipo", ""))
         elif st.button("Marcar treino", use_container_width=True):
             add_activity("Treino")
             st.rerun()

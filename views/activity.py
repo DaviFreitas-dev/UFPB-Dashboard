@@ -7,7 +7,7 @@ from modules.ui import header, section
 def render():
     header(
         "Atividade",
-        "Registre treino e outras atividades físicas do dia.",
+        "Registro de atividade física.",
     )
 
     with st.container(border=True):
@@ -17,15 +17,15 @@ def render():
         )
 
         if st.button(
-            "✅ Registrar atividade",
+            "Registrar atividade",
             type="primary",
             use_container_width=True,
         ):
             add(activity_type)
-            st.success("Atividade registrada!")
+            st.success("Atividade registrada.")
             st.rerun()
 
-    section("📅 Registro de hoje")
+    section("Hoje")
     items = today()
 
     if not items:
@@ -33,4 +33,4 @@ def render():
         return
 
     for item in items:
-        st.success(f"✅ {item['tipo']}")
+        st.success(item["tipo"])

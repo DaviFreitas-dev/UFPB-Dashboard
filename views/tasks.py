@@ -9,7 +9,7 @@ from modules.ui import header, section
 def render():
     header(
         "Tarefas",
-        "Planeje o que precisa ser feito hoje ou em uma data específica.",
+        "Organize tarefas por data.",
     )
 
     with st.container(border=True):
@@ -29,18 +29,18 @@ def render():
             target_date = st.date_input("Data", value=date.today())
 
         if st.button(
-            "➕ Adicionar tarefa",
+            "Adicionar tarefa",
             type="primary",
             use_container_width=True,
         ):
             if task.strip():
                 add(task.strip(), category, target_date)
-                st.success("Tarefa adicionada!")
+                st.success("Tarefa adicionada.")
                 st.rerun()
             else:
                 st.warning("Digite uma tarefa antes de adicionar.")
 
-    section("✅ Agenda de tarefas")
+    section("Agenda")
     selected_date = st.date_input(
         "Ver tarefas de",
         value=date.today(),
@@ -49,7 +49,7 @@ def render():
     tasks = records_for_date(selected_date)
 
     if not tasks:
-        st.info("Nenhuma tarefa cadastrada para essa data.")
+        st.info("Sem tarefas nesta data.")
         return
 
     done_count = sum(item["status"] == "Concluída" for item in tasks)
@@ -59,7 +59,7 @@ def render():
     )
 
     for item in tasks:
-        check_col, delete_col = st.columns([10, 1])
+        check_col, delete_col = st.columns([8, 2])
         checked = item["status"] == "Concluída"
 
         with check_col:
@@ -71,7 +71,7 @@ def render():
 
         with delete_col:
             if st.button(
-                "🗑️",
+                "Excluir",
                 key=f"delete_task_{item['id']}",
                 help="Excluir tarefa",
             ):

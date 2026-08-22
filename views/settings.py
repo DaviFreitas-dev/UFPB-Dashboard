@@ -3,17 +3,19 @@ import streamlit as st
 
 from modules.config import AMBIENTES
 from modules.database import get_config, reset_cycle, reset_progress, update_user_config
-from modules.ui import header, section
+from modules.ui import header, section, without_emoji
 
 
 def render():
     header(
         "Configurações",
-        "Ajuste o ciclo e mantenha o sistema do seu jeito.",
+        "Ciclo de estudos e dados do aplicativo.",
     )
 
-    section("🎯 Edital")
+    section("Edital")
     df = pd.DataFrame(get_config())
+    if not df.empty and "disciplina" in df:
+        df["disciplina"] = df["disciplina"].map(without_emoji)
 
     edited = st.data_editor(
         df,
@@ -36,7 +38,7 @@ def render():
         },
     )
 
-    if st.button("💾 Salvar edital", type="primary", use_container_width=True):
+    if st.button("Salvar edital", type="primary", use_container_width=True):
         rows = []
         invalid_row = False
 
@@ -63,25 +65,28 @@ def render():
             st.error("Adicione pelo menos uma disciplina.")
         else:
             update_user_config(rows)
-            st.success("Edital atualizado e ciclo reiniciado!")
+            st.success("Edital salvo e ciclo reiniciado.")
             st.rerun()
 
     st.write("")
-    section("🔄 Ciclo")
+    section("Ciclo")
 
-    if st.button("🔄 Reiniciar ciclo", use_container_width=True):
+    if st.button("Reiniciar ciclo", use_container_width=True):
         reset_cycle()
-        st.success("Ciclo reiniciado!")
+        st.success("Ciclo reiniciado.")
         st.rerun()
 
     st.write("")
-    section("🗑️ Zona de perigo")
+    section("Apagar dados")
 
     with st.container(border=True):
-        st.warning("Isso apaga XP e histórico. O edital continua salvo.")
-        confirm = st.checkbox("Eu realmente quero apagar meu progresso.")
+        st.warning(
+            "Apaga XP, histórico de estudo e eventos de XP. "
+            "O edital não muda."
+        )
+        confirm = st.checkbox("Confirmo que quero apagar meu progresso.")
 
-        if st.button("🚨 Apagar progresso", use_container_width=True):
+        if st.button("Apagar progresso", use_container_width=True):
             if confirm:
                 reset_progress()
                 st.success("Progresso apagado.")

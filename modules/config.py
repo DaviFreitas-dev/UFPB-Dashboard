@@ -4,16 +4,16 @@ XP_POR_NIVEL = 1000
 AMBIENTES = ["Mesa", "Transporte", "Ambos"]
 
 CICLO_PADRAO = {
-    "📐 Matemática (Assaad)": {"horas": 5, "ambiente": "Mesa"},
-    "📚 Linguagens (Fernanda Pessoa)": {"horas": 5, "ambiente": "Transporte"},
-    "🖋️ Redação (Fernanda Pessoa)": {"horas": 4, "ambiente": "Ambos"},
-    "⚡ Física (Guisoli)": {"horas": 3, "ambiente": "Mesa"},
-    "🧪 Química (Michel Arthaud)": {"horas": 3, "ambiente": "Mesa"},
-    "🧬 Biologia (Samuel Cunha)": {"horas": 3, "ambiente": "Transporte"},
-    "🏛️ História (Débora Aladim)": {"horas": 2, "ambiente": "Transporte"},
-    "🌐 Geografia (Thais Formagio)": {"horas": 2, "ambiente": "Transporte"},
-    "🧠 Filosofia (Ferretto)": {"horas": 1, "ambiente": "Transporte"},
-    "📊 Sociologia (Ferretto)": {"horas": 1, "ambiente": "Transporte"},
+    "Matemática (Assaad)": {"horas": 5, "ambiente": "Mesa"},
+    "Linguagens (Fernanda Pessoa)": {"horas": 5, "ambiente": "Transporte"},
+    "Redação (Fernanda Pessoa)": {"horas": 4, "ambiente": "Ambos"},
+    "Física (Guisoli)": {"horas": 3, "ambiente": "Mesa"},
+    "Química (Michel Arthaud)": {"horas": 3, "ambiente": "Mesa"},
+    "Biologia (Samuel Cunha)": {"horas": 3, "ambiente": "Transporte"},
+    "História (Débora Aladim)": {"horas": 2, "ambiente": "Transporte"},
+    "Geografia (Thais Formagio)": {"horas": 2, "ambiente": "Transporte"},
+    "Filosofia (Ferretto)": {"horas": 1, "ambiente": "Transporte"},
+    "Sociologia (Ferretto)": {"horas": 1, "ambiente": "Transporte"},
 }
 
 SHEETS = {

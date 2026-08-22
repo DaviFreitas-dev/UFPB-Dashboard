@@ -26,7 +26,7 @@ from modules.planner import (
     weekly_items,
     weekly_summary,
 )
-from modules.ui import header, section
+from modules.ui import header, section, without_emoji
 
 
 def render_calendar(items):
@@ -78,7 +78,7 @@ def render_week():
     items = weekly_items()
     render_calendar(items)
 
-    with st.expander("＋ Adicionar ou gerenciar horários"):
+    with st.expander("Adicionar ou gerenciar horários"):
         with st.form("weekly_schedule_form", clear_on_submit=True):
             cols = st.columns([1.1, 1, 2.4, 1.3])
             with cols[0]:
@@ -112,7 +112,7 @@ def render_week():
             st.rerun()
 
         if not items:
-            st.caption("Nenhum horário fixo cadastrado ainda.")
+            st.caption("Sem horários fixos.")
         else:
             for day_name in WEEKDAYS:
                 day_items = [
@@ -124,7 +124,7 @@ def render_week():
 
                 st.markdown(f"**{day_name}**")
                 for item in sorted(day_items, key=lambda row: str(row.get("hora", ""))):
-                    text_col, action_col = st.columns([10, 1])
+                    text_col, action_col = st.columns([8, 2])
                     with text_col:
                         st.write(
                             f"{item.get('hora', '--:--')} — "
@@ -132,7 +132,7 @@ def render_week():
                         )
                     with action_col:
                         if st.button(
-                            "📦",
+                            "Arquivar",
                             key=f"archive_weekly_{item['id']}",
                             help="Arquivar",
                         ):
@@ -180,7 +180,7 @@ def render_deadlines():
     items = assessments()
 
     if not items:
-        st.info("Nenhum prazo futuro cadastrado.")
+        st.info("Nenhum prazo futuro.")
         return
 
     today = date.today()
@@ -197,12 +197,12 @@ def render_deadlines():
         countdown = (
             "hoje"
             if days == 0
-            else f"em {days} dia(s)"
+            else f"em {days} {'dia' if days == 1 else 'dias'}"
             if days > 0
-            else f"atrasado {abs(days)} dia(s)"
+            else f"{abs(days)} {'dia' if abs(days) == 1 else 'dias'} em atraso"
         )
         title_text = escape(str(item.get("titulo", "")))
-        subject_text = escape(str(item.get("disciplina", "")))
+        subject_text = escape(without_emoji(item.get("disciplina", "")))
         date_text = escape(str(item.get("data", "")))
         question_goal = int(item.get("meta_questoes", 0) or 0)
         meta_text = f" • meta {question_goal} questões" if question_goal else ""
@@ -250,7 +250,7 @@ def render_reviews_errors():
             st.success("Nenhuma revisão vencida.")
         else:
             for review in reviews:
-                discipline = escape(str(review.get("disciplina", "")))
+                discipline = escape(without_emoji(review.get("disciplina", "")))
                 topic = escape(str(review.get("assunto", "")))
                 when = escape(str(review.get("data", "")))
                 st.html(
@@ -275,20 +275,22 @@ def render_reviews_errors():
         errors = open_errors()
 
         if not errors:
-            st.success("Nenhum erro aberto.")
+            st.success("Nenhum erro pendente.")
         else:
             for error in errors:
-                discipline = escape(str(error.get("disciplina", "")))
+                discipline = escape(without_emoji(error.get("disciplina", "")))
                 topic = escape(str(error.get("assunto", "")))
                 note = escape(str(error.get("nota", ""))) if error.get("nota") else ""
                 note_text = f" • {note}" if note else ""
+                quantity = int(error.get("quantidade", 0) or 0)
+                error_label = "erro" if quantity == 1 else "erros"
                 st.html(
                     f"""
                     <div class="dashboard-card">
                         <div class="dashboard-card-label">PONTO FRACO</div>
                         <div class="dashboard-card-title">{discipline} · {topic}</div>
                         <div class="dashboard-card-copy">
-                            {error.get('quantidade', 0)} erro(s){note_text}
+                            {quantity} {error_label}{note_text}
                         </div>
                     </div>
                     """
@@ -330,6 +332,12 @@ def render_goals_tomorrow():
         progress = weekly_goal_progress()
         progress_percent = round(progress["progress"] * 100)
         progress_degrees = round(progress["progress"] * 360)
+        remaining = max(progress["target"] - progress["done"], 0)
+        goal_copy = (
+            "Meta concluída."
+            if remaining == 0
+            else f"Faltam {remaining} questões."
+        )
         st.html(
             f"""
             <div class="dashboard-card">
@@ -340,7 +348,7 @@ def render_goals_tomorrow():
                     <div>
                         <div class="dashboard-card-label">META ATUAL</div>
                         <div class="dashboard-card-title">{progress['done']} / {progress['target']} questões</div>
-                        <div class="dashboard-card-copy">Acompanhe o avanço da semana sem depender só do total acumulado.</div>
+                        <div class="dashboard-card-copy">{goal_copy}</div>
                     </div>
                 </div>
             </div>
@@ -348,10 +356,10 @@ def render_goals_tomorrow():
         )
 
         if progress["reached"]:
-            st.success("Meta alcançada! +100 XP.")
+            st.success("Meta concluída. 100 XP adicionados.")
 
     with right:
-        section("As 3 de amanhã")
+        section("Prioridades de amanhã")
         tomorrow = date.today() + timedelta(days=1)
         priorities = priorities_for_date(tomorrow)
 
@@ -369,7 +377,7 @@ def render_goals_tomorrow():
             if add_priority(tomorrow, priority.strip()):
                 st.rerun()
             else:
-                st.warning("Você já definiu 3 prioridades para amanhã.")
+                st.warning("Amanhã já tem três prioridades.")
 
         for item in priorities:
             checked = item.get("status") == "Concluída"
@@ -404,7 +412,7 @@ def render_journal():
     entries = journal_entries()
 
     if not entries:
-        st.info("Seu diário ainda está vazio.")
+        st.info("Nenhuma nota no diário.")
         return
 
     for entry in entries:
@@ -431,7 +439,7 @@ def render_weekly_review():
 
 
 def render():
-    header("Planejar", "Calendário, prazos, revisões e metas.")
+    header("Planejar", "Semana, prazos, revisões e metas.")
     render_weekly_review()
 
     tabs = st.tabs(

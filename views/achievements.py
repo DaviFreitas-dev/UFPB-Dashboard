@@ -7,7 +7,7 @@ from modules.ui import header
 def render():
     header(
         "Conquistas",
-        "Transforme progresso real em marcos desbloqueáveis.",
+        "Marcos do seu progresso.",
     )
 
     items = check()
@@ -20,13 +20,14 @@ def render():
                 if unlocked
                 else "achievement achievement-locked"
             )
-            icon = "🏆" if unlocked else "🔒"
+            status = "Concluída" if unlocked else "Bloqueada"
 
             st.html(
                 f"""
                 <div class="{class_name}">
+                    <div class="achievement-status">{status}</div>
                     <div class="achievement-title">
-                        {icon} {title}
+                        {title}
                     </div>
                     <div class="achievement-desc">
                         {description}

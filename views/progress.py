@@ -10,7 +10,7 @@ from modules.questions import (
     weekly_accuracy_series,
 )
 from modules.studies import calculate_level, stats
-from modules.ui import header, section
+from modules.ui import header, section, without_emoji
 
 
 def render_question_chart(question_stats):
@@ -62,10 +62,10 @@ def render_question_chart(question_stats):
 
 def render_summary_cards(study, questions, streak):
     values = [
-        ("◷", "HORAS", f"{study['hours']}h", "tempo acumulado"),
-        ("◎", "QUESTÕES", questions["total"], "resolvidas"),
-        ("↗", "APROVEITAMENTO", f"{questions['accuracy']:.1%}", "média geral"),
-        ("⚡", "SEQUÊNCIA", streak, "dias ativos"),
+        ("", "HORAS", f"{study['hours']}h", "tempo acumulado"),
+        ("", "QUESTÕES", questions["total"], "resolvidas"),
+        ("", "APROVEITAMENTO", f"{questions['accuracy']:.1%}", "média geral"),
+        ("🔥", "SEQUÊNCIA", streak, "dias ativos"),
     ]
     cols = st.columns(4)
 
@@ -91,7 +91,7 @@ def render():
     streak = general_streak()
     week = weekly_summary()
 
-    header("Progresso", "Seu desempenho em uma visão única.")
+    header("Progresso", "Histórico de estudo e desempenho.")
     render_summary_cards(study, questions, streak)
 
     st.write("")
@@ -124,7 +124,7 @@ def render():
         df = df.dropna(subset=["data"]).sort_values("data").set_index("data")
         st.bar_chart(df, y="horas")
     else:
-        st.info("Ainda não há histórico de estudo.")
+        st.info("Nenhuma sessão de estudo registrada.")
 
     section("Questões")
     if questions["total"] > 0:
@@ -151,7 +151,7 @@ def render():
             )
             render_question_chart(questions)
     else:
-        st.info("Registre questões ao concluir uma missão para liberar esta análise.")
+        st.info("Registre questões em uma missão para ver esta análise.")
 
     section("Evolução semanal")
     trend = pd.DataFrame(weekly_accuracy_series(8))
@@ -161,7 +161,7 @@ def render():
         st.line_chart(chart, y="acuracia")
         st.caption("Percentual de acerto nas últimas 8 semanas.")
     else:
-        st.info("Ainda não há questões suficientes para mostrar a evolução.")
+        st.info("Sem dados nas últimas oito semanas.")
 
     section("Desempenho por matéria")
     subjects = subject_totals()
@@ -171,7 +171,7 @@ def render():
         for subject, values in subjects.items():
             rows.append(
                 {
-                    "Matéria": subject,
+                    "Matéria": without_emoji(subject),
                     "Questões": values["total"],
                     "Acertos": values["correct"],
                     "Erros": values["wrong"],
@@ -198,7 +198,7 @@ def render():
             },
         )
     else:
-        st.info("O desempenho por matéria começa a aparecer nas novas sessões registradas.")
+        st.info("O desempenho por matéria aparece após a primeira sessão.")
 
     section("Pontos para revisar")
     open_errors = [
@@ -207,7 +207,7 @@ def render():
     ]
 
     if not open_errors:
-        st.success("Nenhum erro aberto no caderno.")
+        st.success("Nenhum erro pendente.")
     else:
         error_df = pd.DataFrame(open_errors)
         if not error_df.empty:
@@ -223,7 +223,9 @@ def render():
                 .sort_values("quantidade", ascending=False)
             )
             st.dataframe(
-                grouped.rename(
+                grouped.assign(
+                    disciplina=grouped["disciplina"].map(without_emoji)
+                ).rename(
                     columns={
                         "disciplina": "Matéria",
                         "assunto": "Assunto",
