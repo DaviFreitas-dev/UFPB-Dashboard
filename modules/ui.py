@@ -1,9 +1,25 @@
+import re
 from pathlib import Path
 
 import streamlit as st
 
 from modules.config import XP_POR_NIVEL
 from modules.database import get_xp
+
+
+_EMOJI_PATTERN = re.compile(
+    "["
+    "\U0001F1E6-\U0001F1FF"
+    "\U0001F300-\U0001FAFF"
+    "\u2600-\u27BF"
+    "\u200D\uFE0E\uFE0F"
+    "]+",
+)
+
+
+def without_emoji(value):
+    text = _EMOJI_PATTERN.sub("", str(value))
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def apply_css():
@@ -46,18 +62,18 @@ def render_sidebar():
         return st.radio(
             "NAVEGAÇÃO",
             [
-                "🏠 Hoje",
-                "🗓️ Planejar",
-                "📅 Rotina",
-                "🎯 Ciclo",
-                "📚 Missões",
-                "📖 Leitura",
-                "✅ Tarefas",
-                "🔥 Hábitos",
-                "🏋️ Atividade",
-                "📈 Progresso",
-                "🏆 Conquistas",
-                "⚙️ Configurações",
+                "Hoje",
+                "Planejar",
+                "Rotina",
+                "Ciclo",
+                "Missões",
+                "Leitura",
+                "Tarefas",
+                "Hábitos",
+                "Atividade",
+                "Progresso",
+                "Conquistas",
+                "Configurações",
             ],
             label_visibility="collapsed",
         )
@@ -73,15 +89,8 @@ def header(title, subtitle=None):
     st.html(
         f"""
         <div class="page-head">
-            <div>
-                <div class="page-eyebrow">NEXO</div>
-                <div class="page-title">{title}</div>
-                {subtitle_html}
-            </div>
-            <div class="page-status">
-                <span class="page-status-dot"></span>
-                sistema ativo
-            </div>
+            <div class="page-title">{title}</div>
+            {subtitle_html}
         </div>
         """
     )

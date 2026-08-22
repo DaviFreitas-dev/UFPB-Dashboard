@@ -19,7 +19,7 @@ from views import (
 
 st.set_page_config(
     page_title="Nexo",
-    page_icon="✦",
+    page_icon="N",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -30,18 +30,18 @@ initialize_database()
 page = render_sidebar()
 
 pages = {
-    "🏠 Hoje": home.render,
-    "🗓️ Planejar": planning.render,
-    "📅 Rotina": routine.render,
-    "🎯 Ciclo": cycle.render,
-    "📚 Missões": missions.render,
-    "📖 Leitura": reading.render,
-    "✅ Tarefas": tasks.render,
-    "🔥 Hábitos": habits.render,
-    "🏋️ Atividade": activity.render,
-    "📈 Progresso": progress.render,
-    "🏆 Conquistas": achievements.render,
-    "⚙️ Configurações": settings.render,
+    "Hoje": home.render,
+    "Planejar": planning.render,
+    "Rotina": routine.render,
+    "Ciclo": cycle.render,
+    "Missões": missions.render,
+    "Leitura": reading.render,
+    "Tarefas": tasks.render,
+    "Hábitos": habits.render,
+    "Atividade": activity.render,
+    "Progresso": progress.render,
+    "Conquistas": achievements.render,
+    "Configurações": settings.render,
 }
 
 pages[page]()

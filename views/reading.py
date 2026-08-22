@@ -7,11 +7,11 @@ from modules.ui import header, section
 def render():
     header(
         "Leitura",
-        "Acompanhe livros, páginas e metas diárias sem misturar com o ciclo de estudos.",
+        "Livros em andamento e metas de páginas.",
     )
 
     with st.container(border=True):
-        section("➕ Adicionar livro")
+        section("Adicionar livro")
 
         title = st.text_input("Título")
         author = st.text_input("Autor")
@@ -23,22 +23,22 @@ def render():
             goal = st.number_input("Meta diária", min_value=1, value=20)
 
         if st.button(
-            "📚 Adicionar livro",
+            "Adicionar livro",
             type="primary",
             use_container_width=True,
         ):
             if title.strip():
                 add(title.strip(), author.strip(), int(total), int(goal))
-                st.success("Livro adicionado!")
+                st.success("Livro adicionado.")
                 st.rerun()
             else:
                 st.warning("Digite o título do livro.")
 
-    section("📚 Minha biblioteca")
+    section("Biblioteca")
     books = all_books()
 
     if not books:
-        st.info("Sua biblioteca está vazia.")
+        st.info("Nenhum livro cadastrado.")
         return
 
     for book in books:
@@ -51,7 +51,7 @@ def render():
         with st.container(border=True):
             title_col, status_col = st.columns([4, 1])
             with title_col:
-                st.subheader(f"📖 {book['titulo']}")
+                st.subheader(book["titulo"])
                 st.caption(book["autor"] or "Autor não informado")
             with status_col:
                 st.caption(status)
@@ -59,8 +59,9 @@ def render():
             st.progress(progress, text=f"{current}/{total} páginas")
 
             if status == "Lendo":
+                page_label = "página" if daily_target == 1 else "páginas"
                 st.info(
-                    f"Meta sugerida para hoje: {daily_target} página(s)."
+                    f"Meta de hoje: {daily_target} {page_label}."
                 )
 
             page = st.number_input(
@@ -71,30 +72,30 @@ def render():
                 key=f"page_{book['id']}",
             )
 
-            save_col, status_button_col, delete_col = st.columns([5, 3, 1])
+            save_col, status_button_col, delete_col = st.columns([4, 2, 1.5])
 
             with save_col:
                 if st.button(
-                    "💾 Atualizar leitura",
+                    "Atualizar leitura",
                     key=f"book_{book['id']}",
                     use_container_width=True,
                 ):
                     new_status = "Concluído" if page >= total else status
                     update(book["id"], page, new_status)
-                    st.success("Leitura atualizada!")
+                    st.success("Leitura atualizada.")
                     st.rerun()
 
             with status_button_col:
                 if status == "Concluído":
                     if st.button(
-                        "↩️ Voltar a ler",
+                        "Voltar a ler",
                         key=f"reopen_{book['id']}",
                         use_container_width=True,
                     ):
                         update(book["id"], page, "Lendo")
                         st.rerun()
                 elif st.button(
-                    "✅ Concluir",
+                    "Concluir",
                     key=f"finish_{book['id']}",
                     use_container_width=True,
                 ):
@@ -103,7 +104,7 @@ def render():
 
             with delete_col:
                 if st.button(
-                    "🗑️",
+                    "Excluir",
                     key=f"delete_book_{book['id']}",
                     help="Excluir livro",
                 ):

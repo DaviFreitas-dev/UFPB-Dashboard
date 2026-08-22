@@ -40,10 +40,10 @@ def render():
             text=f"{done_fixed + done_custom} de {total} atividades concluídas",
         )
 
-    section("🧩 Semana fixa")
+    section("Semana fixa")
 
     if not fixed:
-        st.info("Nada fixo para este dia. Cadastre em Planejar.")
+        st.info("Sem horários fixos para este dia.")
     else:
         for item in sorted(fixed, key=lambda row: str(row.get("hora"))):
             checkin = fixed_checkins.get(str(item["id"]), {})
@@ -57,7 +57,7 @@ def render():
                 toggle_weekly(item["id"], selected_date, new_value)
                 st.rerun()
 
-    section("📌 Compromissos avulsos")
+    section("Compromissos avulsos")
 
     with st.expander("Adicionar compromisso"):
         with st.form("routine_add_form", clear_on_submit=True):
@@ -81,11 +81,11 @@ def render():
             st.rerun()
 
     if not custom:
-        st.info("Nenhum compromisso avulso.")
+        st.info("Sem compromissos avulsos.")
         return
 
     for item in sorted(custom, key=lambda row: str(row.get("hora"))):
-        check_col, delete_col = st.columns([10, 1])
+        check_col, delete_col = st.columns([8, 2])
         checked = item.get("status") == "Concluída"
 
         with check_col:
@@ -97,7 +97,7 @@ def render():
 
         with delete_col:
             if st.button(
-                "🗑️",
+                "Excluir",
                 key=f"delete_routine_{item['id']}",
                 help="Excluir",
             ):

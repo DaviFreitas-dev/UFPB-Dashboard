@@ -7,7 +7,7 @@ from modules.ui import header, section
 def render():
     header(
         "Hábitos",
-        "Acompanhe consistência diária e veja suas sequências crescerem.",
+        "Hábitos e sequências diárias.",
     )
 
     with st.container(border=True):
@@ -17,23 +17,23 @@ def render():
         )
 
         if st.button(
-            "🔥 Adicionar hábito",
+            "Adicionar hábito",
             type="primary",
             use_container_width=True,
         ):
             if not name.strip():
                 st.warning("Digite o nome do hábito.")
             elif add(name.strip()):
-                st.success("Hábito criado!")
+                st.success("Hábito criado.")
                 st.rerun()
             else:
                 st.info("Esse hábito já está ativo.")
 
-    section("🔥 Hoje")
+    section("Hoje")
     habits = today()
 
     if not habits:
-        st.info("Você ainda não cadastrou hábitos.")
+        st.info("Nenhum hábito cadastrado.")
     else:
         done = sum(habit["feito"] == "Sim" for habit in habits)
         st.progress(
@@ -47,7 +47,7 @@ def render():
             checked = habit["feito"] == "Sim"
             habit_streak = streak_map.get(habit["habito"], 0)
             new_value = st.checkbox(
-                f"{habit['habito']}  •  🔥 {habit_streak} dia(s)",
+                f"{habit['habito']} · 🔥 sequência de {habit_streak} dias",
                 value=checked,
                 key=f"habit_{habit['id']}",
             )
@@ -57,7 +57,7 @@ def render():
                 st.rerun()
 
     st.write("")
-    section("⚙️ Gerenciar hábitos")
+    section("Gerenciar hábitos")
     configs = active_configs()
 
     if configs:
@@ -67,7 +67,7 @@ def render():
                 configs,
                 format_func=lambda item: item["nome"],
             )
-            if st.button("📦 Arquivar hábito", use_container_width=True):
+            if st.button("Arquivar hábito", use_container_width=True):
                 archive(selected["id"])
-                st.success("Hábito arquivado. Seu histórico foi preservado.")
+                st.success("Hábito arquivado; o histórico foi mantido.")
                 st.rerun()
