@@ -627,13 +627,18 @@ button[kind="primary"]:hover {
     font-weight: 700;
 }
 
-[data-testid="stProgress"] > div > div {
-    background: #282d35;
+[data-testid="stProgress"] [data-testid="stMarkdownContainer"] {
+    color: #8e96a2;
+    font-size: .76rem;
 }
 
-[data-testid="stProgress"] > div > div > div > div {
+[data-testid="stProgressBarTrack"] {
+    background: #282d35 !important;
+}
+
+[data-testid="stProgressBarTrack"] > div {
     border-radius: 999px;
-    background: var(--accent);
+    background: var(--accent) !important;
 }
 
 [data-testid="stVerticalBlockBorderWrapper"] {
@@ -682,6 +687,31 @@ button[kind="primary"]:hover {
     border-width: 1px;
     border-radius: 9px;
     background: #15181d;
+}
+
+[data-testid="stAlertContainer"] {
+    border: 1px solid #2a3038 !important;
+    border-left: 2px solid #5f76ca !important;
+    border-radius: 9px !important;
+    color: #b8bec8 !important;
+    background: #171a1f !important;
+}
+
+[data-testid="stAlertContainer"] [data-testid^="stAlertContent"],
+[data-testid="stAlertContainer"] [data-testid="stMarkdownContainer"] {
+    color: inherit !important;
+}
+
+[data-testid="stAlertContainer"]:has([data-testid="stAlertContentSuccess"]) {
+    border-left-color: #668a73 !important;
+}
+
+[data-testid="stAlertContainer"]:has([data-testid="stAlertContentWarning"]) {
+    border-left-color: #9a8258 !important;
+}
+
+[data-testid="stAlertContainer"]:has([data-testid="stAlertContentError"]) {
+    border-left-color: #9d6268 !important;
 }
 
 * {
