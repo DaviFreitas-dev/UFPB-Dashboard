@@ -6,7 +6,8 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 
 from api.dashboard import load_today_dashboard
-from api.models import TodayDashboard
+from api.models import PlanningDashboard, TodayDashboard
+from api.planning import load_planning_dashboard
 
 
 logger = logging.getLogger(__name__)
@@ -58,4 +59,23 @@ def today_dashboard(_=Depends(require_api_token)):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Não foi possível carregar os dados do painel.",
+        ) from error
+
+
+@app.get(
+    "/v1/planning",
+    response_model=PlanningDashboard,
+    response_model_by_alias=True,
+    tags=["planejamento"],
+)
+def planning_dashboard(_=Depends(require_api_token)):
+    try:
+        return load_planning_dashboard()
+    except HTTPException:
+        raise
+    except Exception as error:
+        logger.exception("Falha ao montar o planejamento do NEXO.")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Não foi possível carregar o planejamento.",
         ) from error

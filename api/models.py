@@ -96,3 +96,64 @@ class TodayDashboard(ApiModel):
     habits: list[Habit]
     physical_activity: str | None
     activity: list[ActivityDay]
+
+
+class WeeklySummary(ApiModel):
+    start: str
+    end: str
+    study_hours: float
+    questions: int
+    accuracy: float
+    tasks_completed: int
+    reviews_completed: int
+
+
+class PlanningAgendaItem(ApiModel):
+    id: str
+    time: str
+    title: str
+    category: str
+
+
+class PlanningDay(ApiModel):
+    name: str
+    date: str
+    is_today: bool
+    items: list[PlanningAgendaItem]
+
+
+class PlanningAssessment(ApiModel):
+    id: str
+    title: str
+    kind: str
+    subject: str
+    date: str
+    question_goal: int
+    is_boss: bool
+
+
+class WeakPoint(ApiModel):
+    id: str
+    subject: str
+    topic: str
+    quantity: int
+    note: str
+
+
+class JournalEntry(ApiModel):
+    id: str
+    date: str
+    text: str
+
+
+class PlanningDashboard(ApiModel):
+    date: str
+    user: DashboardUser
+    summary: WeeklySummary
+    weekly_questions: WeeklyGoal
+    week: list[PlanningDay]
+    assessments: list[PlanningAssessment]
+    reviews: list[Review]
+    weak_points: list[WeakPoint]
+    tomorrow: list[Task]
+    journal: list[JournalEntry]

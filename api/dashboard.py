@@ -1,3 +1,4 @@
+import math
 import os
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -41,15 +42,16 @@ def _text(value, default=""):
 def _integer(value, default=0):
     try:
         return int(float(value))
-    except (TypeError, ValueError):
+    except (OverflowError, TypeError, ValueError):
         return default
 
 
 def _number(value, default=0.0):
     try:
-        return float(value)
-    except (TypeError, ValueError):
+        number = float(value)
+    except (OverflowError, TypeError, ValueError):
         return default
+    return number if math.isfinite(number) else default
 
 
 def _date(value):

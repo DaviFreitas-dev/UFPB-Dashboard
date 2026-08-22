@@ -110,6 +110,8 @@
   font: inherit;
   font-size: 0.82rem;
   text-align: left;
+  text-decoration: none;
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
 }
 
 .navItem:disabled {
@@ -117,22 +119,17 @@
   opacity: 0.7;
 }
 
+a.navItem:hover {
+  border-color: #252b33;
+  color: #c4c9d1;
+  background: #171a1f;
+}
+
 .navItemActive {
   border-color: #2a3038;
   color: #f5f6f8;
   background: #1b1f25;
   box-shadow: inset 2px 0 0 var(--color-accent);
-}
-
-.migrationNote {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 6px 0;
-  margin-top: auto;
-  border-top: 1px solid var(--color-border-soft);
-  color: var(--color-muted-2);
-  font-size: 0.65rem;
 }
 
 .main {
@@ -192,6 +189,7 @@
     background: transparent;
     font: inherit;
     font-size: 0.57rem;
+    text-decoration: none;
   }
 
   .mobileItem:disabled {

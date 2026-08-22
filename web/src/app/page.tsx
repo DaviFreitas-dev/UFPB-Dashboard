@@ -8,7 +8,7 @@ export default async function HomePage() {
   const result = await loadTodayDashboard();
 
   return (
-    <AppShell user={result.dashboard.user}>
+    <AppShell currentPath="/" user={result.dashboard.user}>
       <TodayDashboard {...result} />
     </AppShell>
   );
