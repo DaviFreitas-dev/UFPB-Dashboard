@@ -163,7 +163,7 @@ function isArrayOf<T>(
   return Array.isArray(value) && value.every(guard);
 }
 
-function isDashboardUser(value: unknown): value is DashboardUser {
+export function isDashboardUser(value: unknown): value is DashboardUser {
   return (
     isRecord(value) &&
     isNumber(value.level) &&

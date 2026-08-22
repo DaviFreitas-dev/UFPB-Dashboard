@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
+import type { Route } from "next";
+import Link from "next/link";
 import {
-  Activity,
   Award,
   BookOpen,
   CalendarDays,
@@ -13,15 +14,22 @@ import {
   Settings,
   Sparkles,
   Target,
+  type LucideIcon,
 } from "lucide-react";
 
 import type { DashboardUser } from "@/lib/dashboard";
 import { ratio } from "@/lib/dashboard";
 import styles from "./app-shell.module.css";
 
-const navigation = [
-  { label: "Hoje", icon: CircleGauge, active: true },
-  { label: "Planejar", icon: CalendarDays },
+type NavigationItem = {
+  label: string;
+  icon: LucideIcon;
+  href?: Route;
+};
+
+const navigation: NavigationItem[] = [
+  { label: "Hoje", icon: CircleGauge, href: "/" },
+  { label: "Planejar", icon: CalendarDays, href: "/planejar" },
   { label: "Rotina", icon: NotebookTabs },
   { label: "Ciclo", icon: Target },
   { label: "Missões", icon: Sparkles },
@@ -40,10 +48,11 @@ const mobileNavigation = navigation.filter(({ label }) =>
 
 type AppShellProps = {
   children: ReactNode;
+  currentPath: "/" | "/planejar";
   user: DashboardUser;
 };
 
-export function AppShell({ children, user }: AppShellProps) {
+export function AppShell({ children, currentPath, user }: AppShellProps) {
   const levelProgress = ratio(user.xpInLevel, user.xpPerLevel);
 
   return (
@@ -68,42 +77,66 @@ export function AppShell({ children, user }: AppShellProps) {
         </section>
 
         <nav className={styles.navigation} aria-label="Navegação principal">
-          {navigation.map(({ label, icon: Icon, active }) => (
-            <button
-              aria-current={active ? "page" : undefined}
-              className={active ? styles.navItemActive : styles.navItem}
-              disabled={!active}
-              key={label}
-              title={active ? undefined : "Disponível no aplicativo atual"}
-              type="button"
-            >
-              <Icon aria-hidden="true" size={17} strokeWidth={1.8} />
-              <span>{label}</span>
-            </button>
-          ))}
-        </nav>
+          {navigation.map(({ label, icon: Icon, href }) => {
+            const active = href === currentPath;
 
-        <div className={styles.migrationNote}>
-          <Activity aria-hidden="true" size={15} />
-          <span>Interface em migração gradual</span>
-        </div>
+            if (href) {
+              return (
+                <Link
+                  aria-current={active ? "page" : undefined}
+                  className={active ? styles.navItemActive : styles.navItem}
+                  href={href}
+                  key={label}
+                >
+                  <Icon aria-hidden="true" size={17} strokeWidth={1.8} />
+                  <span>{label}</span>
+                </Link>
+              );
+            }
+
+            return (
+              <button
+                className={styles.navItem}
+                disabled
+                key={label}
+                title="Disponível no NEXO atual"
+                type="button"
+              >
+                <Icon aria-hidden="true" size={17} strokeWidth={1.8} />
+                <span>{label}</span>
+              </button>
+            );
+          })}
+        </nav>
       </aside>
 
       <main className={styles.main}>{children}</main>
 
       <nav className={styles.mobileNav} aria-label="Navegação móvel">
-        {mobileNavigation.map(({ label, icon: Icon, active }) => (
-          <button
-            aria-current={active ? "page" : undefined}
-            className={active ? styles.mobileItemActive : styles.mobileItem}
-            disabled={!active}
-            key={label}
-            type="button"
-          >
-            <Icon aria-hidden="true" size={20} strokeWidth={1.8} />
-            <span>{label}</span>
-          </button>
-        ))}
+        {mobileNavigation.map(({ label, icon: Icon, href }) => {
+          const active = href === currentPath;
+
+          if (href) {
+            return (
+              <Link
+                aria-current={active ? "page" : undefined}
+                className={active ? styles.mobileItemActive : styles.mobileItem}
+                href={href}
+                key={label}
+              >
+                <Icon aria-hidden="true" size={20} strokeWidth={1.8} />
+                <span>{label}</span>
+              </Link>
+            );
+          }
+
+          return (
+            <button className={styles.mobileItem} disabled key={label} type="button">
+              <Icon aria-hidden="true" size={20} strokeWidth={1.8} />
+              <span>{label}</span>
+            </button>
+          );
+        })}
         <button className={styles.mobileItem} disabled type="button">
           <Settings aria-hidden="true" size={20} strokeWidth={1.8} />
           <span>Mais</span>

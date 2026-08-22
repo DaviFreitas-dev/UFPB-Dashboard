@@ -22,6 +22,6 @@ python -m pip install -r requirements-api.txt
 uvicorn api.main:app --reload
 ```
 
-O endpoint `GET /v1/dashboard/today` exige o cabeçalho `X-Nexo-Token`. O
-endpoint `GET /health` não consulta a planilha e permanece disponível para
-monitoramento.
+Os endpoints `GET /v1/dashboard/today` e `GET /v1/planning` exigem o cabeçalho
+`X-Nexo-Token`. O endpoint `GET /health` não consulta a planilha e permanece
+disponível para monitoramento.

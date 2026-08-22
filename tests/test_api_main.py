@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 import api.main as api_main
 from api.dashboard import build_today_dashboard
+from api.planning import build_planning_dashboard
 from api.sheets import DASHBOARD_SHEETS
 
 
@@ -13,6 +14,11 @@ client = TestClient(api_main.app)
 def sample_dashboard():
     tables = {name: [] for name in DASHBOARD_SHEETS}
     return build_today_dashboard(tables, date(2026, 8, 22))
+
+
+def sample_planning():
+    tables = {name: [] for name in DASHBOARD_SHEETS}
+    return build_planning_dashboard(tables, date(2026, 8, 22))
 
 
 def test_health_does_not_require_credentials():
@@ -70,3 +76,29 @@ def test_dashboard_hides_internal_failures(monkeypatch):
 
     assert response.status_code == 503
     assert "detalhe interno" not in response.text
+
+
+def test_planning_returns_camel_case_contract(monkeypatch):
+    monkeypatch.setenv("NEXO_API_TOKEN", "segredo-de-teste")
+    monkeypatch.setattr(api_main, "load_planning_dashboard", sample_planning)
+
+    response = client.get(
+        "/v1/planning",
+        headers={"X-Nexo-Token": "segredo-de-teste"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["date"] == "2026-08-22"
+    assert response.json()["summary"]["studyHours"] == 0
+    assert response.json()["week"][5]["isToday"] is True
+
+
+def test_planning_uses_the_same_token_guard(monkeypatch):
+    monkeypatch.setenv("NEXO_API_TOKEN", "segredo-de-teste")
+
+    response = client.get(
+        "/v1/planning",
+        headers={"X-Nexo-Token": "incorreto"},
+    )
+
+    assert response.status_code == 401

@@ -17,10 +17,11 @@ servidor da API. Essas variáveis são lidas apenas no servidor Next.js.
 
 ## Limites desta etapa
 
-- a tela Hoje é somente leitura;
-- as outras áreas continuam no Streamlit;
+- as telas Hoje e Planejar são somente leitura;
+- as demais áreas e todas as edições continuam no Streamlit;
 - nenhuma credencial do Google Sheets pertence ao frontend;
-- o contrato esperado da API está em `src/lib/dashboard.ts`.
+- os contratos esperados da API estão em `src/lib/dashboard.ts` e
+  `src/lib/planning.ts`.
 
 ## Verificações
 
