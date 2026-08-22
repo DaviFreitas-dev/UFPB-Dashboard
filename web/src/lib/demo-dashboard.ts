@@ -30,7 +30,9 @@ export function createDemoDashboard(reference = new Date()): TodayDashboard {
     user: {
       level: 4,
       xp: 3_420,
-      nextLevelXp: 4_000,
+      xpInLevel: 420,
+      xpPerLevel: 1_000,
+      xpToNextLevel: 580,
       streakDays: 6,
       longestStreak: 14,
     },

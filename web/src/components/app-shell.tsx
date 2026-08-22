@@ -44,7 +44,7 @@ type AppShellProps = {
 };
 
 export function AppShell({ children, user }: AppShellProps) {
-  const levelProgress = ratio(user.xp, user.nextLevelXp);
+  const levelProgress = ratio(user.xpInLevel, user.xpPerLevel);
 
   return (
     <div className={styles.shell}>
@@ -62,7 +62,9 @@ export function AppShell({ children, user }: AppShellProps) {
           <div className={styles.levelTrack} aria-hidden="true">
             <span style={{ width: `${levelProgress * 100}%` }} />
           </div>
-          <small>{user.nextLevelXp.toLocaleString("pt-BR")} XP para o próximo nível</small>
+          <small>
+            {user.xpToNextLevel.toLocaleString("pt-BR")} XP para o próximo nível
+          </small>
         </section>
 
         <nav className={styles.navigation} aria-label="Navegação principal">

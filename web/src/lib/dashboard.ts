@@ -1,7 +1,9 @@
 export type DashboardUser = {
   level: number;
   xp: number;
-  nextLevelXp: number;
+  xpInLevel: number;
+  xpPerLevel: number;
+  xpToNextLevel: number;
   streakDays: number;
   longestStreak: number;
 };
@@ -166,7 +168,9 @@ function isDashboardUser(value: unknown): value is DashboardUser {
     isRecord(value) &&
     isNumber(value.level) &&
     isNumber(value.xp) &&
-    isNumber(value.nextLevelXp) &&
+    isNumber(value.xpInLevel) &&
+    isNumber(value.xpPerLevel) &&
+    isNumber(value.xpToNextLevel) &&
     isNumber(value.streakDays) &&
     isNumber(value.longestStreak)
   );

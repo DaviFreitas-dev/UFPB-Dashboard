@@ -12,7 +12,8 @@ pnpm dev
 
 A aplicação usa dados de demonstração enquanto `NEXO_API_URL` não estiver
 definida. Quando a API Python estiver disponível, copie `.env.example` para
-`.env.local` e ajuste apenas o endereço.
+`.env.local`, ajuste o endereço e use o mesmo `NEXO_API_TOKEN` configurado no
+servidor da API. Essas variáveis são lidas apenas no servidor Next.js.
 
 ## Limites desta etapa
 
