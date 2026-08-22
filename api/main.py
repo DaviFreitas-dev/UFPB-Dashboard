@@ -1,13 +1,15 @@
 import hmac
 import logging
 import os
+from datetime import date
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, status
 
 from api.dashboard import load_today_dashboard
-from api.models import PlanningDashboard, TodayDashboard
+from api.models import PlanningDashboard, RoutineDashboard, TodayDashboard
 from api.planning import load_planning_dashboard
+from api.routine import load_routine_dashboard
 
 
 logger = logging.getLogger(__name__)
@@ -78,4 +80,26 @@ def planning_dashboard(_=Depends(require_api_token)):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Não foi possível carregar o planejamento.",
+        ) from error
+
+
+@app.get(
+    "/v1/routine",
+    response_model=RoutineDashboard,
+    response_model_by_alias=True,
+    tags=["rotina"],
+)
+def routine_dashboard(
+    target: Annotated[date | None, Query(alias="date")] = None,
+    _=Depends(require_api_token),
+):
+    try:
+        return load_routine_dashboard(target)
+    except HTTPException:
+        raise
+    except Exception as error:
+        logger.exception("Falha ao montar a rotina do NEXO.")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Não foi possível carregar a rotina.",
         ) from error

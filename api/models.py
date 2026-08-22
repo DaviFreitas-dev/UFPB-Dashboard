@@ -157,3 +157,22 @@ class PlanningDashboard(ApiModel):
     weak_points: list[WeakPoint]
     tomorrow: list[Task]
     journal: list[JournalEntry]
+
+
+class RoutineItem(ApiModel):
+    id: str
+    time: str
+    title: str
+    category: str
+    kind: Literal["fixed", "custom"]
+    completed: bool
+
+
+class RoutineDashboard(ApiModel):
+    date: str
+    user: DashboardUser
+    total: int
+    completed: int
+    fixed_count: int
+    custom_count: int
+    items: list[RoutineItem]
