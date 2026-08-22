@@ -1,0 +1,540 @@
+.page {
+  width: min(1140px, 100%);
+  padding: 38px 40px 72px;
+  margin: 0 auto;
+  animation: pageIn 260ms var(--ease-out) both;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.eyebrow {
+  margin: 0 0 7px;
+  color: var(--color-accent-soft);
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.pageHeader h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 720;
+  letter-spacing: -0.045em;
+}
+
+.intro {
+  margin: 8px 0 0;
+  color: var(--color-muted);
+  font-size: 0.86rem;
+}
+
+.liveBadge,
+.demoBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: #aeb5c0;
+  background: #15181d;
+  font-size: 0.62rem;
+  font-weight: 650;
+}
+
+.liveBadge > span,
+.demoBadge > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #65b98d;
+}
+
+.demoBadge > span {
+  background: #c5a768;
+}
+
+.dateNavigation {
+  display: grid;
+  grid-template-columns: 36px minmax(190px, auto) auto 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 24px 0;
+}
+
+.dateNavigation > div {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 15px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  color: var(--color-muted);
+  background: var(--color-surface);
+}
+
+.dateNavigation strong {
+  color: var(--color-text);
+  font-size: 0.71rem;
+  font-weight: 650;
+}
+
+.dateArrow,
+.todayLink {
+  min-height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  text-decoration: none;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.dateArrow:hover,
+.todayLink:hover {
+  border-color: #3a424f;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+}
+
+.todayLink {
+  padding: 0 12px;
+  color: var(--color-accent-soft);
+  font-size: 0.64rem;
+  font-weight: 680;
+}
+
+.heroGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 14px;
+  margin-bottom: 32px;
+}
+
+.progressCard,
+.nextCard {
+  min-height: 164px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.progressCard {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 24px;
+}
+
+.progressRing {
+  position: relative;
+  width: 86px;
+  height: 86px;
+  flex: 0 0 auto;
+}
+
+.progressRing svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ringTrack,
+.ringValue {
+  fill: none;
+  stroke-width: 4;
+}
+
+.ringTrack {
+  stroke: #282d35;
+}
+
+.ringValue {
+  stroke: var(--color-accent);
+  stroke-linecap: round;
+  animation: draw 620ms var(--ease-out) both;
+}
+
+.progressRing > strong {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.progressCard > div:last-child > span,
+.progressCard > div:last-child > strong {
+  display: block;
+}
+
+.progressCard > div:last-child > span,
+.nextTopline > span {
+  color: var(--color-muted-2);
+  font-size: 0.64rem;
+}
+
+.progressCard > div:last-child > strong {
+  margin-top: 7px;
+  font-size: 1.08rem;
+  font-weight: 690;
+}
+
+.progressCard p,
+.nextCard p,
+.rhythmPanel p {
+  margin: 7px 0 0;
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+.nextCard {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 22px;
+  background: #171a20;
+}
+
+.nextTopline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--color-accent-soft);
+}
+
+.nextCard > strong {
+  margin-top: auto;
+  font-size: 1rem;
+  font-weight: 680;
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(260px, 0.65fr);
+  gap: 34px;
+}
+
+.timelineSection,
+.sideColumn,
+.sideSection {
+  min-width: 0;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 24px;
+  margin-bottom: 11px;
+}
+
+.sectionHeading h2 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 680;
+  letter-spacing: -0.01em;
+}
+
+.sectionHeading > span {
+  color: var(--color-muted-2);
+  font-size: 0.62rem;
+}
+
+.timelinePanel,
+.sidePanel,
+.rhythmPanel {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.timelineRow,
+.timelineDone {
+  display: grid;
+  grid-template-columns: 54px 24px minmax(0, 1fr);
+  gap: 11px;
+  min-height: 82px;
+  padding: 0 17px;
+}
+
+.timelineRow + .timelineRow,
+.timelineRow + .timelineDone,
+.timelineDone + .timelineRow,
+.timelineDone + .timelineDone {
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.timelineRow > time,
+.timelineDone > time {
+  align-self: center;
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 650;
+}
+
+.timelineTrack {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.timelineTrack::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  content: "";
+  background: var(--color-border);
+}
+
+.markerOpen,
+.markerDone {
+  position: relative;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #3b424d;
+  border-radius: 50%;
+  color: var(--color-muted-2);
+  background: var(--color-surface);
+}
+
+.markerDone {
+  border-color: #5268a8;
+  color: #c0cbf4;
+  background: #273253;
+}
+
+.timelineCopy {
+  min-width: 0;
+  align-self: center;
+}
+
+.timelineCopy > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.timelineCopy strong {
+  overflow: hidden;
+  font-size: 0.76rem;
+  font-weight: 660;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timelineDone .timelineCopy strong {
+  color: #8e959f;
+  text-decoration: line-through;
+  text-decoration-color: #555c66;
+}
+
+.timelineCopy p {
+  display: flex;
+  gap: 6px;
+  margin: 5px 0 0;
+  color: var(--color-muted-2);
+  font-size: 0.6rem;
+}
+
+.doneLabel {
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: #9fb0e4;
+  background: #232c47;
+  font-size: 0.55rem;
+}
+
+.emptyTimeline {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  color: var(--color-muted-2);
+}
+
+.emptyTimeline strong {
+  color: var(--color-text);
+  font-size: 0.8rem;
+}
+
+.emptyTimeline span {
+  font-size: 0.64rem;
+}
+
+.sideColumn {
+  display: grid;
+  align-content: start;
+  gap: 28px;
+}
+
+.metricRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px;
+}
+
+.metricRow + .metricRow {
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.metricIcon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #303641;
+  border-radius: 8px;
+  color: var(--color-accent-soft);
+  background: #20242b;
+}
+
+.metricRow > div {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.metricRow span {
+  color: var(--color-muted);
+  font-size: 0.67rem;
+}
+
+.metricRow strong {
+  font-size: 0.9rem;
+}
+
+.rhythmPanel {
+  padding: 18px;
+}
+
+.rhythmPanel > span,
+.rhythmPanel > strong {
+  display: block;
+}
+
+.rhythmPanel > span {
+  color: var(--color-accent-soft);
+  font-size: 0.58rem;
+  font-weight: 720;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rhythmPanel > strong {
+  margin-top: 8px;
+  font-size: 0.88rem;
+  font-weight: 680;
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes draw {
+  from { stroke-dasharray: 0 100; }
+}
+
+@media (max-width: 900px) {
+  .heroGrid,
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sideColumn {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .page {
+    padding: 28px 18px 48px;
+  }
+
+  .pageHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dateNavigation {
+    grid-template-columns: 36px minmax(0, 1fr) 36px;
+  }
+
+  .todayLink {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .progressCard {
+    align-items: flex-start;
+    padding: 20px;
+  }
+
+  .progressRing {
+    width: 72px;
+    height: 72px;
+  }
+
+  .sideColumn {
+    grid-template-columns: 1fr;
+  }
+
+  .timelineRow,
+  .timelineDone {
+    grid-template-columns: 44px 22px minmax(0, 1fr);
+    gap: 8px;
+    padding: 0 12px;
+  }
+
+  .timelineCopy > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .timelineCopy strong {
+    white-space: normal;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page,
+  .ringValue {
+    animation: none;
+  }
+}

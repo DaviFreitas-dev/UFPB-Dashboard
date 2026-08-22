@@ -30,7 +30,7 @@ type NavigationItem = {
 const navigation: NavigationItem[] = [
   { label: "Hoje", icon: CircleGauge, href: "/" },
   { label: "Planejar", icon: CalendarDays, href: "/planejar" },
-  { label: "Rotina", icon: NotebookTabs },
+  { label: "Rotina", icon: NotebookTabs, href: "/rotina" },
   { label: "Ciclo", icon: Target },
   { label: "Missões", icon: Sparkles },
   { label: "Leitura", icon: BookOpen },
@@ -43,12 +43,12 @@ const navigation: NavigationItem[] = [
 ];
 
 const mobileNavigation = navigation.filter(({ label }) =>
-  ["Hoje", "Planejar", "Missões", "Progresso"].includes(label),
+  ["Hoje", "Planejar", "Rotina", "Progresso"].includes(label),
 );
 
 type AppShellProps = {
   children: ReactNode;
-  currentPath: "/" | "/planejar";
+  currentPath: "/" | "/planejar" | "/rotina";
   user: DashboardUser;
 };
 
