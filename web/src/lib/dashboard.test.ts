@@ -43,7 +43,7 @@ describe("isTodayDashboard", () => {
     expect(
       isTodayDashboard({
         ...dashboard,
-        user: { ...dashboard.user, xp: "3420" },
+        user: { ...dashboard.user, xpInLevel: "420" },
       }),
     ).toBe(false);
     expect(isTodayDashboard({ ...dashboard, agenda: [{ id: "sem-campos" }] })).toBe(

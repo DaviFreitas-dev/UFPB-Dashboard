@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 
+from modules.config import WEEKDAYS
 from modules.database import (
     append_record,
     delete_record,
@@ -9,17 +10,6 @@ from modules.database import (
 )
 from modules.gamification import award_xp_once
 from modules.questions import questions_between
-
-
-WEEKDAYS = [
-    "Segunda",
-    "Terça",
-    "Quarta",
-    "Quinta",
-    "Sexta",
-    "Sábado",
-    "Domingo",
-]
 
 
 def monday_of(target=None):

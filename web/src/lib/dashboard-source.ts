@@ -1,3 +1,5 @@
+import "server-only";
+
 import {
   type DashboardResult,
   isTodayDashboard,
@@ -6,6 +8,7 @@ import { createDemoDashboard } from "@/lib/demo-dashboard";
 
 export async function loadTodayDashboard(): Promise<DashboardResult> {
   const baseUrl = process.env.NEXO_API_URL?.replace(/\/$/, "");
+  const apiToken = process.env.NEXO_API_TOKEN;
 
   if (!baseUrl) {
     return {
@@ -14,10 +17,15 @@ export async function loadTodayDashboard(): Promise<DashboardResult> {
     };
   }
 
+  if (!apiToken) {
+    throw new Error("O token da API do NEXO não foi configurado no servidor web.");
+  }
+
   const response = await fetch(`${baseUrl}/v1/dashboard/today`, {
     cache: "no-store",
     headers: {
       Accept: "application/json",
+      "X-Nexo-Token": apiToken,
     },
   });
 

@@ -24,13 +24,17 @@ jobs:
           cache: pip
           cache-dependency-path: |
             requirements.txt
+            requirements-api.txt
             requirements-dev.txt
 
       - name: Install dependencies
-        run: python -m pip install -r requirements.txt -r requirements-dev.txt
+        run: python -m pip install -r requirements-api.txt -r requirements-dev.txt
+
+      - name: Check dependency compatibility
+        run: python -m pip check
 
       - name: Check Python syntax
-        run: python -m compileall -q app.py modules views
+        run: python -m compileall -q app.py api modules views
 
       - name: Run tests
         run: python -m pytest -q

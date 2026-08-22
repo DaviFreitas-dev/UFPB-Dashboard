@@ -1,6 +1,16 @@
 XP_POR_HORA = 100
 XP_POR_NIVEL = 1000
 
+WEEKDAYS = [
+    "Segunda",
+    "Terça",
+    "Quarta",
+    "Quinta",
+    "Sexta",
+    "Sábado",
+    "Domingo",
+]
+
 AMBIENTES = ["Mesa", "Transporte", "Ambos"]
 
 CICLO_PADRAO = {
