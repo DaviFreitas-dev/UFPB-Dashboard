@@ -6,6 +6,8 @@ from fastapi.testclient import TestClient
 
 import api.task_mutations as task_mutations
 from api.main import app
+from modules import database
+from modules.config import SHEETS
 
 
 client = TestClient(app)
@@ -16,6 +18,25 @@ PAYLOAD = {
     "title": "Revisar matemática",
     "category": "Estudo",
 }
+MALFORMED_JSON = b'{"id":'
+
+
+class FakeTaskWorksheet:
+    def __init__(self, fail_after_first_append=False):
+        self.rows = []
+        self.append_attempts = 0
+        self.fail_after_first_append = fail_after_first_append
+
+    def get(self, pad_values):
+        assert pad_values is True
+        return [list(SHEETS["Tarefas"]), *[list(row) for row in self.rows]]
+
+    def append_row(self, values, value_input_option):
+        assert value_input_option == "USER_ENTERED"
+        self.append_attempts += 1
+        self.rows.append(list(values))
+        if self.fail_after_first_append and self.append_attempts == 1:
+            raise RuntimeError("a resposta do append foi perdida")
 
 
 def enable_mutations(monkeypatch):
@@ -35,37 +56,88 @@ def test_task_creation_requires_token_before_write_gate(monkeypatch):
     monkeypatch.setenv("NEXO_API_TOKEN", "server-test")
     monkeypatch.delenv("NEXO_API_WRITES_ENABLED", raising=False)
     forbid_domain_call(monkeypatch)
+    cache_clears = []
+    monkeypatch.setattr(
+        task_mutations,
+        "clear_dashboard_cache",
+        lambda: cache_clears.append(True),
+    )
 
-    response = client.post("/v1/tasks", json=PAYLOAD)
+    response = client.post(
+        "/v1/tasks",
+        json=PAYLOAD,
+        headers={"X-Request-ID": "task-request-1"},
+    )
 
     assert response.status_code == 401
+    assert response.json() == {
+        "error": {
+            "code": "invalid_token",
+            "message": "Token inválido.",
+            "operationId": "task-request-1",
+        }
+    }
     assert "server-test" not in response.text
+    assert cache_clears == []
 
 
 def test_task_creation_rejects_wrong_token_before_write_gate(monkeypatch):
     monkeypatch.setenv("NEXO_API_TOKEN", "server-test")
     monkeypatch.delenv("NEXO_API_WRITES_ENABLED", raising=False)
     forbid_domain_call(monkeypatch)
+    cache_clears = []
+    monkeypatch.setattr(
+        task_mutations,
+        "clear_dashboard_cache",
+        lambda: cache_clears.append(True),
+    )
 
     response = client.post(
         "/v1/tasks",
         json=PAYLOAD,
-        headers={"X-Nexo-Token": "wrong"},
+        headers={"X-Nexo-Token": "wrong", "X-Request-ID": "task-request-1"},
     )
 
     assert response.status_code == 401
+    assert response.json()["error"]["code"] == "invalid_token"
+    assert response.json()["error"]["operationId"] == "task-request-1"
     assert "server-test" not in response.text
+    assert cache_clears == []
+
+
+def test_task_creation_maps_missing_token_configuration(monkeypatch):
+    monkeypatch.delenv("NEXO_API_TOKEN", raising=False)
+    monkeypatch.setenv("NEXO_API_WRITES_ENABLED", "true")
+    forbid_domain_call(monkeypatch)
+
+    response = client.post(
+        "/v1/tasks",
+        json=PAYLOAD,
+        headers={"X-Nexo-Token": "unused", "X-Request-ID": "task-request-1"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "authentication_unavailable"
+    assert response.json()["error"]["operationId"] == "task-request-1"
 
 
 def test_task_creation_is_blocked_by_default(monkeypatch):
     monkeypatch.setenv("NEXO_API_TOKEN", "server-test")
     monkeypatch.delenv("NEXO_API_WRITES_ENABLED", raising=False)
     forbid_domain_call(monkeypatch)
+    cache_clears = []
+    monkeypatch.setattr(
+        task_mutations,
+        "clear_dashboard_cache",
+        lambda: cache_clears.append(True),
+    )
 
     response = client.post("/v1/tasks", json=PAYLOAD, headers=HEADERS)
 
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "writes_disabled"
+    assert response.json()["error"]["operationId"] == "task-request-1"
+    assert cache_clears == []
 
 
 def test_write_gate_runs_before_payload_validation(monkeypatch):
@@ -81,6 +153,85 @@ def test_write_gate_runs_before_payload_validation(monkeypatch):
 
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "writes_disabled"
+
+
+def test_malformed_json_requires_token_before_decoding(monkeypatch):
+    enable_mutations(monkeypatch)
+    forbid_domain_call(monkeypatch)
+
+    response = client.post(
+        "/v1/tasks",
+        content=MALFORMED_JSON,
+        headers={
+            "Content-Type": "application/json",
+            "X-Request-ID": "task-request-1",
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "invalid_token"
+    assert response.json()["error"]["operationId"] == "task-request-1"
+
+
+def test_malformed_json_rejects_wrong_token_before_decoding(monkeypatch):
+    enable_mutations(monkeypatch)
+    forbid_domain_call(monkeypatch)
+
+    response = client.post(
+        "/v1/tasks",
+        content=MALFORMED_JSON,
+        headers={
+            "Content-Type": "application/json",
+            "X-Nexo-Token": "wrong",
+            "X-Request-ID": "task-request-1",
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "invalid_token"
+
+
+def test_malformed_json_checks_write_gate_before_decoding(monkeypatch):
+    monkeypatch.setenv("NEXO_API_TOKEN", "server-test")
+    monkeypatch.delenv("NEXO_API_WRITES_ENABLED", raising=False)
+    forbid_domain_call(monkeypatch)
+
+    response = client.post(
+        "/v1/tasks",
+        content=MALFORMED_JSON,
+        headers={
+            **HEADERS,
+            "Content-Type": "application/json",
+        },
+    )
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "writes_disabled"
+
+
+def test_malformed_json_is_invalid_after_guards_pass(monkeypatch):
+    enable_mutations(monkeypatch)
+    forbid_domain_call(monkeypatch)
+    cache_clears = []
+    monkeypatch.setattr(
+        task_mutations,
+        "clear_dashboard_cache",
+        lambda: cache_clears.append(True),
+    )
+
+    response = client.post(
+        "/v1/tasks",
+        content=MALFORMED_JSON,
+        headers={
+            **HEADERS,
+            "Content-Type": "application/json",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_request"
+    assert response.json()["error"]["operationId"] == "task-request-1"
+    assert cache_clears == []
 
 
 def test_task_creation_normalizes_then_locks_domain_and_clears_cache(monkeypatch):
@@ -211,19 +362,109 @@ def test_task_creation_reports_identical_retry_without_second_append(monkeypatch
     assert cache_clears == [True, True]
 
 
+def test_numeric_looking_title_is_an_identical_retry(monkeypatch):
+    enable_mutations(monkeypatch)
+    worksheet = FakeTaskWorksheet()
+    worksheet.rows.append([
+        PAYLOAD["id"],
+        PAYLOAD["date"],
+        "001",
+        PAYLOAD["category"],
+        "Pendente",
+    ])
+    database.clear_records_cache("Tarefas")
+    monkeypatch.setattr(database, "get_worksheet", lambda _name: worksheet)
+    monkeypatch.setattr(task_mutations, "clear_dashboard_cache", lambda: None)
+
+    try:
+        response = client.post(
+            "/v1/tasks",
+            json={**PAYLOAD, "title": "001"},
+            headers=HEADERS,
+        )
+    finally:
+        database.clear_records_cache("Tarefas")
+
+    assert response.status_code == 200
+    assert response.json()["created"] is False
+    assert response.json()["task"]["title"] == "001"
+    assert worksheet.append_attempts == 0
+
+
+def test_retry_reloads_after_append_persists_but_response_is_lost(monkeypatch):
+    enable_mutations(monkeypatch)
+    worksheet = FakeTaskWorksheet(fail_after_first_append=True)
+    dashboard_cache_clears = []
+    database.clear_records_cache("Tarefas")
+    monkeypatch.setattr(database, "get_worksheet", lambda _name: worksheet)
+    monkeypatch.setattr(
+        task_mutations,
+        "clear_dashboard_cache",
+        lambda: dashboard_cache_clears.append(True),
+    )
+
+    try:
+        first = client.post("/v1/tasks", json=PAYLOAD, headers=HEADERS)
+        retry = client.post("/v1/tasks", json=PAYLOAD, headers=HEADERS)
+    finally:
+        database.clear_records_cache("Tarefas")
+
+    assert first.status_code == 503
+    assert retry.status_code == 200
+    assert retry.json()["created"] is False
+    assert len(worksheet.rows) == 1
+    assert worksheet.append_attempts == 1
+    assert dashboard_cache_clears == [True]
+
+
+def test_retry_after_dashboard_cache_failure_does_not_append_again(monkeypatch):
+    enable_mutations(monkeypatch)
+    worksheet = FakeTaskWorksheet()
+    dashboard_cache_attempts = []
+    database.clear_records_cache("Tarefas")
+    monkeypatch.setattr(database, "get_worksheet", lambda _name: worksheet)
+
+    def clear_dashboard_cache():
+        dashboard_cache_attempts.append(True)
+        if len(dashboard_cache_attempts) == 1:
+            raise RuntimeError("falha temporária do cache")
+
+    monkeypatch.setattr(task_mutations, "clear_dashboard_cache", clear_dashboard_cache)
+
+    try:
+        first = client.post("/v1/tasks", json=PAYLOAD, headers=HEADERS)
+        retry = client.post("/v1/tasks", json=PAYLOAD, headers=HEADERS)
+    finally:
+        database.clear_records_cache("Tarefas")
+
+    assert first.status_code == 503
+    assert retry.status_code == 200
+    assert retry.json()["created"] is False
+    assert len(worksheet.rows) == 1
+    assert worksheet.append_attempts == 1
+    assert dashboard_cache_attempts == [True, True]
+
+
 def test_task_creation_maps_id_conflict_without_leaking_content(monkeypatch):
     enable_mutations(monkeypatch)
+    cache_clears = []
 
     def conflict(*_args, **_kwargs):
         raise task_mutations.tasks.TaskIdConflict("conteúdo privado")
 
     monkeypatch.setattr(task_mutations.tasks, "add", conflict)
+    monkeypatch.setattr(
+        task_mutations,
+        "clear_dashboard_cache",
+        lambda: cache_clears.append(True),
+    )
     response = client.post("/v1/tasks", json=PAYLOAD, headers=HEADERS)
 
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "idempotency_conflict"
     assert response.json()["error"]["operationId"] == "task-request-1"
     assert "conteúdo privado" not in response.text
+    assert cache_clears == []
 
 
 def test_task_creation_maps_internal_failure_without_leaking_details(
@@ -244,3 +485,21 @@ def test_task_creation_maps_internal_failure_without_leaking_details(
     assert response.json()["error"]["operationId"] == "task-request-1"
     assert "segredo interno da planilha" not in response.text
     assert "segredo interno da planilha" not in caplog.text
+
+
+def test_openapi_declares_one_post_with_real_request_and_error_schemas():
+    task_operations = app.openapi()["paths"]["/v1/tasks"]
+
+    assert list(task_operations) == ["post"]
+    operation = task_operations["post"]
+    request_schema = operation["requestBody"]["content"]["application/json"][
+        "schema"
+    ]
+    assert request_schema["type"] == "object"
+    assert set(request_schema["required"]) == {"id", "date", "title", "category"}
+    assert request_schema["properties"]["id"]["format"] == "uuid"
+    assert request_schema["properties"]["date"]["format"] == "date"
+    assert operation["responses"]["422"]["content"]["application/json"][
+        "schema"
+    ] == {"$ref": "#/components/schemas/MutationErrorResponse"}
+    assert "HTTPValidationError" not in str(operation)

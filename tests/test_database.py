@@ -143,6 +143,22 @@ def test_records_use_one_sheet_read_and_validate_its_header(monkeypatch):
     database.clear_records_cache()
 
 
+def test_records_preserve_numeric_looking_task_text(monkeypatch):
+    class ReadWorksheet:
+        def get(self, **kwargs):
+            assert kwargs == {"pad_values": True}
+            return [
+                SHEETS["Tarefas"],
+                ["task-001", "2026-08-23", "001", "Estudo", "Pendente"],
+            ]
+
+    monkeypatch.setattr(database, "get_worksheet", lambda _name: ReadWorksheet())
+
+    result = database._read_records("Tarefas")
+
+    assert result[0]["tarefa"] == "001"
+
+
 def test_records_cache_reuses_rows_until_cleared(monkeypatch):
     reads = []
 

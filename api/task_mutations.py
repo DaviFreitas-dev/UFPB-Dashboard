@@ -1,11 +1,12 @@
+import json
 import logging
 from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
-from pydantic import Field, field_validator
+from pydantic import Field, ValidationError, field_validator
 
 from api.models import ApiModel
 from api.mutations import NexoMutationError, mutation_lock, require_api_writes
@@ -24,6 +25,21 @@ class TaskMutationRoute(APIRoute):
         async def safe_validation_handler(request: Request):
             try:
                 return await original_route_handler(request)
+            except HTTPException as error:
+                if error.status_code == 401:
+                    code = "invalid_token"
+                    message = "Token inválido."
+                elif error.status_code == 503:
+                    code = "authentication_unavailable"
+                    message = "A autenticação da API está indisponível."
+                else:
+                    code = "request_failed"
+                    message = "A solicitação não pôde ser processada."
+                raise NexoMutationError(
+                    error.status_code,
+                    code,
+                    message,
+                ) from error
             except RequestValidationError as error:
                 raise NexoMutationError(
                     422,
@@ -70,12 +86,65 @@ class CreateTaskResponse(ApiModel):
     task: CreatedTask
 
 
-@router.post("", response_model=CreateTaskResponse, response_model_by_alias=True)
-def create_task(
-    payload: CreateTaskRequest,
+class MutationError(ApiModel):
+    code: str
+    message: str
+    operation_id: str
+
+
+class MutationErrorResponse(ApiModel):
+    error: MutationError
+
+
+async def parse_create_task_request(
     request: Request,
     _token=Depends(require_api_token),
     _writes=Depends(require_api_writes),
+) -> CreateTaskRequest:
+    try:
+        body = await request.json()
+        return CreateTaskRequest.model_validate(body)
+    except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as error:
+        raise NexoMutationError(
+            422,
+            "invalid_request",
+            "Revise os dados enviados.",
+        ) from error
+
+
+@router.post(
+    "",
+    response_model=CreateTaskResponse,
+    response_model_by_alias=True,
+    responses={
+        401: {"model": MutationErrorResponse, "description": "Token inválido."},
+        409: {
+            "model": MutationErrorResponse,
+            "description": "Conflito de idempotência.",
+        },
+        422: {
+            "model": MutationErrorResponse,
+            "description": "Dados inválidos.",
+        },
+        503: {
+            "model": MutationErrorResponse,
+            "description": "Escrita indisponível.",
+        },
+    },
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {
+                    "schema": CreateTaskRequest.model_json_schema(by_alias=True),
+                }
+            },
+        }
+    },
+)
+def create_task(
+    request: Request,
+    payload: CreateTaskRequest = Depends(parse_create_task_request),
 ):
     try:
         with mutation_lock():

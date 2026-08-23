@@ -10,7 +10,7 @@ from functools import lru_cache
 import gspread
 from google.oauth2.service_account import Credentials
 from gspread.http_client import BackOffHTTPClient
-from gspread.utils import numericise_all, to_records
+from gspread.utils import to_records
 
 from modules.config import CICLO_PADRAO, SHEETS, XP_POR_HORA
 from modules.sheets_credentials import READ_WRITE_SCOPES, load_service_account_info
@@ -127,11 +127,7 @@ def _read_records(name):
     if not entire_sheet:
         return []
 
-    values = [
-        numericise_all(row, False, "", False, [])
-        for row in entire_sheet[1:]
-    ]
-    return to_records(current, values)
+    return to_records(current, entire_sheet[1:])
 
 
 def _records_cached(name):
@@ -191,11 +187,14 @@ def replace_records(name, rows):
 
 
 def append_record(name, values):
-    get_worksheet(name).append_row(
-        values,
-        value_input_option="USER_ENTERED",
-    )
     clear_records_cache(name)
+    try:
+        get_worksheet(name).append_row(
+            values,
+            value_input_option="USER_ENTERED",
+        )
+    finally:
+        clear_records_cache(name)
 
 
 def write_values_batch(updates):
