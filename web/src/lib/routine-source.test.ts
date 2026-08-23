@@ -42,4 +42,21 @@ describe("loadRoutineDashboard", () => {
       }),
     );
   });
+
+  it("deixa a API escolher o dia atual quando não há data na URL", async () => {
+    process.env.NEXO_API_URL = "http://127.0.0.1:8000";
+    process.env.NEXO_API_TOKEN = "segredo-de-teste";
+    const routine = createDemoRoutine(new Date(2026, 7, 24));
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(routine), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await loadRoutineDashboard();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/v1/routine",
+      expect.any(Object),
+    );
+  });
 });

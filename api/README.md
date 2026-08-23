@@ -22,7 +22,16 @@ python -m pip install -r requirements-api.txt
 uvicorn api.main:app --reload
 ```
 
-Os endpoints `GET /v1/dashboard/today`, `GET /v1/planning` e
-`GET /v1/routine?date=AAAA-MM-DD` exigem o cabeçalho `X-Nexo-Token`. O endpoint
+Os endpoints abaixo exigem o cabeçalho `X-Nexo-Token`:
+
+- `GET /v1/dashboard/today`;
+- `GET /v1/planning`;
+- `GET /v1/routine?date=AAAA-MM-DD`;
+- `GET /v1/studies`;
+- `GET /v1/personal?date=AAAA-MM-DD`;
+- `GET /v1/profile`.
+
+Cada resposta é montada em memória a partir do mesmo lote de leitura das abas.
+Os endpoints não criam registros, não concedem XP e não ajustam dados antigos.
 `GET /health` não consulta a planilha e permanece disponível para
 monitoramento.

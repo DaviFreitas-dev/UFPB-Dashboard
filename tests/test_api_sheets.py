@@ -22,6 +22,10 @@ def test_api_uses_only_read_scopes():
     assert all(scope.endswith(".readonly") for scope in sheets._READ_ONLY_SCOPES)
 
 
+def test_workspace_sheets_share_the_same_batch():
+    assert {"Config", "Ciclo", "Conquistas"}.issubset(sheets.DASHBOARD_SHEETS)
+
+
 def test_dashboard_tables_use_one_cached_batch(monkeypatch):
     workbook = FakeWorkbook()
     monkeypatch.setattr(sheets, "_open_workbook", lambda: workbook)

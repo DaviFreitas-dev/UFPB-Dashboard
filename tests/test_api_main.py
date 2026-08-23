@@ -4,9 +4,12 @@ from fastapi.testclient import TestClient
 
 import api.main as api_main
 from api.dashboard import build_today_dashboard
+from api.personal import build_personal_workspace
 from api.planning import build_planning_dashboard
+from api.profile import build_profile_workspace
 from api.routine import build_routine_dashboard
 from api.sheets import DASHBOARD_SHEETS
+from api.studies import build_study_workspace
 
 
 client = TestClient(api_main.app)
@@ -25,6 +28,21 @@ def sample_planning():
 def sample_routine(reference=None):
     tables = {name: [] for name in DASHBOARD_SHEETS}
     return build_routine_dashboard(tables, reference or date(2026, 8, 22))
+
+
+def sample_studies():
+    tables = {name: [] for name in DASHBOARD_SHEETS}
+    return build_study_workspace(tables, date(2026, 8, 22))
+
+
+def sample_personal(reference=None):
+    tables = {name: [] for name in DASHBOARD_SHEETS}
+    return build_personal_workspace(tables, reference or date(2026, 8, 22))
+
+
+def sample_profile():
+    tables = {name: [] for name in DASHBOARD_SHEETS}
+    return build_profile_workspace(tables, date(2026, 8, 22))
 
 
 def test_health_does_not_require_credentials():
@@ -133,3 +151,77 @@ def test_routine_rejects_an_invalid_date(monkeypatch):
     )
 
     assert response.status_code == 422
+
+
+def test_studies_returns_the_combined_contract(monkeypatch):
+    monkeypatch.setenv("NEXO_API_TOKEN", "segredo-de-teste")
+    monkeypatch.setattr(api_main, "load_study_workspace", sample_studies, raising=False)
+
+    response = client.get(
+        "/v1/studies",
+        headers={"X-Nexo-Token": "segredo-de-teste"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["date"] == "2026-08-22"
+    assert response.json()["cycle"]["totalHours"] == 0
+    assert response.json()["progress"]["weeklyAccuracy"][-1]["weekStart"] == "2026-08-17"
+
+
+def test_personal_accepts_a_selected_date(monkeypatch):
+    monkeypatch.setenv("NEXO_API_TOKEN", "segredo-de-teste")
+    monkeypatch.setattr(api_main, "load_personal_workspace", sample_personal, raising=False)
+
+    response = client.get(
+        "/v1/personal?date=2026-08-24",
+        headers={"X-Nexo-Token": "segredo-de-teste"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["date"] == "2026-08-24"
+    assert response.json()["tasks"]["items"] == []
+
+
+def test_personal_rejects_an_invalid_date(monkeypatch):
+    monkeypatch.setenv("NEXO_API_TOKEN", "segredo-de-teste")
+
+    response = client.get(
+        "/v1/personal?date=ontem",
+        headers={"X-Nexo-Token": "segredo-de-teste"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_profile_returns_achievement_and_settings_contract(monkeypatch):
+    monkeypatch.setenv("NEXO_API_TOKEN", "segredo-de-teste")
+    monkeypatch.setattr(api_main, "load_profile_workspace", sample_profile, raising=False)
+
+    response = client.get(
+        "/v1/profile",
+        headers={"X-Nexo-Token": "segredo-de-teste"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["achievements"]["total"] == 11
+    assert response.json()["settings"]["environments"] == [
+        "Mesa",
+        "Transporte",
+        "Ambos",
+    ]
+
+
+def test_workspace_hides_internal_failures(monkeypatch):
+    monkeypatch.setenv("NEXO_API_TOKEN", "segredo-de-teste")
+
+    def fail():
+        raise RuntimeError("detalhe interno")
+
+    monkeypatch.setattr(api_main, "load_study_workspace", fail, raising=False)
+    response = client.get(
+        "/v1/studies",
+        headers={"X-Nexo-Token": "segredo-de-teste"},
+    )
+
+    assert response.status_code == 503
+    assert "detalhe interno" not in response.text

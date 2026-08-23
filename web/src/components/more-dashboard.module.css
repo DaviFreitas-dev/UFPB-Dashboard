@@ -1,0 +1,109 @@
+.page {
+  width: min(1120px, 100%);
+  min-height: 100vh;
+  padding: 54px 48px 72px;
+  margin: 0 auto;
+}
+
+.header p {
+  margin: 0 0 9px;
+  color: var(--color-accent-soft);
+  font-size: 0.7rem;
+  font-weight: 760;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  letter-spacing: -0.05em;
+}
+
+.header span {
+  display: block;
+  margin-top: 10px;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 36px;
+}
+
+.card {
+  min-height: 112px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text);
+  background: var(--color-surface);
+  text-decoration: none;
+  transition: transform 180ms var(--ease-out), border-color 180ms ease, background 180ms ease;
+}
+
+.card:hover {
+  border-color: #3a4351;
+  background: var(--color-surface-raised);
+  transform: translateY(-2px);
+}
+
+.card > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.card strong {
+  font-size: 0.91rem;
+}
+
+.card small {
+  color: var(--color-muted);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.icon {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid #303744;
+  border-radius: 9px;
+  color: var(--color-accent-soft);
+  background: #1c2128;
+}
+
+@media (max-width: 880px) {
+  .page {
+    padding: 32px 20px 112px;
+  }
+
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    min-height: 96px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}

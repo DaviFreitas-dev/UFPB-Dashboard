@@ -12,7 +12,7 @@ type RoutinePageProps = {
 export default async function RoutinePage({ searchParams }: RoutinePageProps) {
   const params = await searchParams;
   const rawDate = Array.isArray(params.date) ? params.date[0] : params.date;
-  const selectedDate = normalizeRoutineDate(rawDate);
+  const selectedDate = rawDate ? normalizeRoutineDate(rawDate) : undefined;
   const result = await loadRoutineDashboard(selectedDate);
 
   return (
