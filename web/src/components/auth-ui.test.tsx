@@ -53,6 +53,22 @@ function textContent(node: ReactNode): string {
     .join(" ");
 }
 
+function findElements(
+  node: ReactNode,
+  predicate: (element: ElementWithProps) => boolean,
+): ElementWithProps[] {
+  if (!isValidElement<Record<string, unknown>>(node)) {
+    return [];
+  }
+  const matches = predicate(node) ? [node] : [];
+  return Children.toArray(node.props.children as ReactNode).reduce<
+    ElementWithProps[]
+  >(
+    (all, child) => all.concat(findElements(child, predicate)),
+    matches,
+  );
+}
+
 describe("interface de autenticação", () => {
   it("entra com GitHub e retorna ao produto", async () => {
     const page = SignInPage();
@@ -92,15 +108,19 @@ describe("interface de autenticação", () => {
         longestStreak: 14,
       },
     });
-    const form = findElement(
+    const forms = findElements(
       shell,
       (element) =>
         element.type === "form" && textContent(element).includes("Sair"),
     );
 
-    expect(form).toBeDefined();
-    const action = form?.props.action as () => Promise<void>;
-    await expect(action()).resolves.toBeUndefined();
+    expect(forms).toHaveLength(2);
+    for (const form of forms) {
+      expect(typeof form.props.action).toBe("function");
+      const action = form.props.action as () => Promise<void>;
+      await expect(action()).resolves.toBeUndefined();
+    }
+    expect(signOutMock).toHaveBeenCalledTimes(2);
     expect(signOutMock).toHaveBeenCalledWith({ redirectTo: "/entrar" });
   });
 });

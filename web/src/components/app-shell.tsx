@@ -10,6 +10,7 @@ import {
   CircleGauge,
   Dumbbell,
   ListTodo,
+  LogOut,
   NotebookTabs,
   Settings,
   Sparkles,
@@ -70,6 +71,10 @@ type AppShellProps = {
 
 export function AppShell({ children, currentPath, user }: AppShellProps) {
   const levelProgress = ratio(user.xpInLevel, user.xpPerLevel);
+  async function handleSignOut() {
+    "use server";
+    await signOut({ redirectTo: "/entrar" });
+  }
 
   return (
     <div className={styles.shell}>
@@ -109,13 +114,7 @@ export function AppShell({ children, currentPath, user }: AppShellProps) {
           })}
         </nav>
 
-        <form
-          action={async () => {
-            "use server";
-            await signOut({ redirectTo: "/entrar" });
-          }}
-          className={styles.signOutForm}
-        >
+        <form action={handleSignOut} className={styles.signOutForm}>
           <button className={styles.signOutButton} type="submit">
             Sair
           </button>
@@ -151,6 +150,12 @@ export function AppShell({ children, currentPath, user }: AppShellProps) {
           <Settings aria-hidden="true" size={20} strokeWidth={1.8} />
           <span>Mais</span>
         </Link>
+        <form action={handleSignOut} className={styles.mobileSignOutForm}>
+          <button className={styles.mobileItem} type="submit">
+            <LogOut aria-hidden="true" size={20} strokeWidth={1.8} />
+            <span>Sair</span>
+          </button>
+        </form>
       </nav>
     </div>
   );
