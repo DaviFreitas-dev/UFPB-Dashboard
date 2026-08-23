@@ -1,7 +1,10 @@
+import { randomUUID } from "node:crypto";
+
 import { AppShell } from "@/components/app-shell";
 import { TasksWorkspace } from "@/components/tasks-workspace";
 import { normalizeRoutineDate } from "@/lib/routine";
 import { loadPersonalWorkspace } from "@/lib/personal-workspace-source";
+import { mutationsUiEnabled } from "@/lib/write-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +18,11 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
   return (
     <AppShell currentPath="/tarefas" user={result.workspace.user}>
-      <TasksWorkspace {...result} />
+      <TasksWorkspace
+        {...result}
+        canMutate={result.source === "api" && mutationsUiEnabled()}
+        initialItemId={randomUUID()}
+      />
     </AppShell>
   );
 }

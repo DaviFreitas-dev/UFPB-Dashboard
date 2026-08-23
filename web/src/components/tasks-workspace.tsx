@@ -3,9 +3,20 @@ import { Check, Circle, ListChecks } from "lucide-react";
 import { ratio } from "@/lib/dashboard";
 import type { PersonalWorkspaceResult } from "@/lib/personal-workspace";
 import { PersonalWorkspaceFrame } from "./personal-workspace-frame";
+import { TaskCreateForm } from "./task-create-form";
 import styles from "./personal-workspace.module.css";
 
-export function TasksWorkspace({ workspace, source }: PersonalWorkspaceResult) {
+type TasksWorkspaceProps = PersonalWorkspaceResult & {
+  canMutate: boolean;
+  initialItemId: string;
+};
+
+export function TasksWorkspace({
+  workspace,
+  source,
+  canMutate,
+  initialItemId,
+}: TasksWorkspaceProps) {
   const progress = Math.round(ratio(workspace.tasks.completed, workspace.tasks.total) * 100);
   const remaining = Math.max(workspace.tasks.total - workspace.tasks.completed, 0);
 
@@ -26,6 +37,13 @@ export function TasksWorkspace({ workspace, source }: PersonalWorkspaceResult) {
         </div>
         <strong className={styles.summaryValue}>{progress}%</strong>
       </section>
+
+      {canMutate ? (
+        <TaskCreateForm
+          initialItemId={initialItemId}
+          selectedDate={workspace.date}
+        />
+      ) : null}
 
       <section className={styles.section}>
         <div className={styles.sectionHeading}>

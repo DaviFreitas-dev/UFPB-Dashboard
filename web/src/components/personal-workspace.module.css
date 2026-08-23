@@ -194,6 +194,34 @@
 .emptyState strong { color: var(--color-text); font-size: 0.8rem; }
 .emptyState span { font-size: 0.65rem; }
 
+.createForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.35fr) auto;
+  gap: 12px;
+  margin-top: 30px;
+  padding: 18px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.createForm .sectionHeading { grid-column: 1 / -1; margin-bottom: 0; }
+.createForm label { display: grid; gap: 7px; color: var(--color-muted); font-size: 0.64rem; }
+.createForm input {
+  min-height: 40px;
+  padding: 0 11px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+}
+.createForm input:focus-visible,
+.createForm button:focus-visible { outline: 2px solid var(--color-accent-soft); outline-offset: 2px; }
+.createForm button { min-height: 40px; align-self: end; }
+.createForm button:disabled { cursor: wait; opacity: 0.58; }
+.createForm small { color: #d99a9a; }
+.formMessage { grid-column: 1 / -1; min-height: 1rem; margin: 0; color: var(--color-muted); font-size: 0.64rem; }
+
 .readingGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .bookCard { min-height: 204px; display: flex; flex-direction: column; padding: 19px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
 .bookTopline { display: flex; align-items: center; justify-content: space-between; min-height: 20px; color: var(--color-accent-soft); }
@@ -208,6 +236,8 @@
   .listPanel,
   .bookCard,
   .emptyState { animation: reveal 240ms var(--ease-out) both; }
+  .createForm input,
+  .createForm button { transition: border-color 180ms ease, opacity 180ms ease; }
 }
 
 @keyframes reveal {
@@ -228,4 +258,7 @@
   .itemDone > .openPill { grid-column: 2; justify-self: start; }
   .readingGrid { grid-template-columns: 1fr; }
   .bookMeta { flex-direction: column; gap: 4px; }
+  .createForm { grid-template-columns: 1fr; }
+  .createForm .sectionHeading,
+  .formMessage { grid-column: 1; }
 }
