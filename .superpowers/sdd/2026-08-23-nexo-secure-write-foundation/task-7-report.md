@@ -12,8 +12,10 @@
   lado de cada leitura pelo `fetchNexoApi()`.
 - Sessões são JWT, com `githubId` e `githubLogin` transportados pelo token. O ID
   é revalidado no `authorized` e em `requireAuthorizedSession()`.
-- `/entrar`, `/acesso-negado`, `/api/auth/*` e `/api/health` permanecem públicos;
-  as superfícies do produto passam pelo Proxy do Next.js 16.
+- `/entrar`, `/acesso-negado`, `/api/health` e `/favicon.ico` permanecem
+  públicos somente como rotas exatas. `/api/auth/`, `/_next/static/` e
+  `/_next/image/` exigem limite real de segmento; nomes parecidos passam pelo
+  Proxy do Next.js 16.
 - Login, recusa e logout possuem UI natural em português. O logout está
   disponível tanto no sidebar quanto na navegação móvel.
 - `NEXO_API_TOKEN`, client secret, allowlist e `AUTH_SECRET` não aparecem no
@@ -90,6 +92,24 @@ pnpm exec vitest run src/proxy.test.ts
 1 arquivo, 8 testes passaram.
 ```
 
+RED da revisão — lookalikes escapavam do Proxy:
+
+```text
+pnpm exec vitest run src/proxy.test.ts
+7 testes falharam: /entrar-secreto, /acesso-negado-extra, /api/authz,
+/api/health-private, /_next/static-private/chunk.js, /_next/image-private e
+/favicon.ico-secreto retornaram false na utility real do Next.
+```
+
+GREEN do matcher delimitado:
+
+```text
+pnpm exec vitest run src/proxy.test.ts
+1 arquivo, 18 testes passaram.
+Queries nas rotas públicas legítimas continuaram fora do Proxy; todos os
+lookalikes e as rotas de produto ficaram protegidos.
+```
+
 RED da auto-revisão responsiva:
 
 ```text
@@ -108,7 +128,7 @@ GREEN completo final:
 
 ```text
 pnpm test
-18 arquivos, 64 testes passaram.
+18 arquivos, 74 testes passaram.
 
 pnpm lint
 exit=0
@@ -145,9 +165,9 @@ HTML/chunks públicos          nenhum nome ou valor de segredo encontrado
   apenas fallback numérico e o login exibível.
 - O Proxy faz apenas a checagem otimista e o redirect. O acesso aos dados
   repete a checagem autoritativa como primeira operação de `fetchNexoApi()`.
-- O matcher foi exercitado contra as quatro superfícies públicas e três rotas
-  protegidas representativas. O health existente continua respondendo sem
-  sessão.
+- O matcher exige fim de pathname nas páginas, health e favicon, e `(?:/|$)`
+  nos prefixos internos. A utility real do Next cobre queries legítimas, sete
+  lookalikes e três rotas de produto representativas.
 - A sessão pública sem cookie retorna `null`; uma rota protegida sem cookie
   redireciona para `/entrar` conservando o callback URL.
 - O build foi varrido em `.next/static` e nos HTMLs prerenderizados de login e
@@ -182,12 +202,13 @@ HTML/chunks públicos          nenhum nome ou valor de segredo encontrado
 - Base da Tarefa 7: `c5637babe2aef87aa314426d3b246ddf289c1cbc`
 - Implementação: `2b8c14fcde089ec1fef59ad88434d8eb93ba3cba`
 - Correção responsiva: `aef0b46c5386643d06c9eecbb819be578ee3b0a5`
+- Correção do matcher: `0d6bf66bb2cf40caf22f5c3b45df75dfddb609d7`
 - SHA-256 `web/package.json`: `32a7ff679b605db970bd538601157b63179f75fdcb2ecdc5ac9c3c71b96417eb`
 - SHA-256 `web/pnpm-lock.yaml`: `fab4673c950caa3b06563c2cb2adffdf4387adf853bbd15af160524ba7af4cb7`
 - SHA-256 `web/src/auth.ts`: `8d33506189eed2930c9dae03300e4ec14d93985b2aaa85d1834deb6d0ddb62b2`
 - SHA-256 `web/src/auth.test.ts`: `e6f43f5837377d638a824f7b4ad310056cb509342781b37e49481bc4064ee66a`
-- SHA-256 `web/src/proxy.ts`: `f0c7c7fe835462ca2075e9051d9c52aa56d4d87509fe43fa3671ec159d53af97`
-- SHA-256 `web/src/proxy.test.ts`: `89a86e4358906fa3cff7c3cc373cfb95c0a4a1bd574fef0aef6276525f6e872d`
+- SHA-256 `web/src/proxy.ts`: `0b22d33e4162ef3c963b1745a8799e685b9dda6b9023a8d0c7b19876d549c168`
+- SHA-256 `web/src/proxy.test.ts`: `593e3f459bf0af8a939e136b7749f0fab5758e0107dd9430abf491d0999a7f91`
 - SHA-256 `web/src/lib/auth-policy.ts`: `5d3714d64033499a55381fdf53a0b045b6b3322c6bc7ccfa826dfacebc1a30a0`
 - SHA-256 `web/src/lib/auth-policy.test.ts`: `5e0e8bbc58abe1d65cec9378a2d9f72a1cf59d4e91896a85cf807a6d3efc90af`
 - SHA-256 `web/src/lib/auth-guard.ts`: `bebb3842789e37139918d6bc0ab79d346d6395c4ae5d75ef76a785bdd2d85918`
