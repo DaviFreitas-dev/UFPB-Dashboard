@@ -25,6 +25,7 @@ class FakeTaskWorksheet:
     def __init__(self, fail_after_first_append=False):
         self.rows = []
         self.append_attempts = 0
+        self.value_input_options = []
         self.fail_after_first_append = fail_after_first_append
 
     def get(self, pad_values):
@@ -32,9 +33,18 @@ class FakeTaskWorksheet:
         return [list(SHEETS["Tarefas"]), *[list(row) for row in self.rows]]
 
     def append_row(self, values, value_input_option):
-        assert value_input_option == "USER_ENTERED"
+        assert value_input_option in {"RAW", "USER_ENTERED"}
         self.append_attempts += 1
-        self.rows.append(list(values))
+        self.value_input_options.append(value_input_option)
+        persisted = list(values)
+        if value_input_option == "USER_ENTERED":
+            persisted = [
+                int(value)
+                if isinstance(value, str) and value.isdigit()
+                else value
+                for value in persisted
+            ]
+        self.rows.append(persisted)
         if self.fail_after_first_append and self.append_attempts == 1:
             raise RuntimeError("a resposta do append foi perdida")
 
@@ -337,7 +347,8 @@ def test_task_creation_reports_identical_retry_without_second_append(monkeypatch
 
     monkeypatch.setattr(task_mutations.tasks, "records", lambda _name: stored)
 
-    def append_record(_name, values):
+    def append_record(_name, values, value_input_option="USER_ENTERED"):
+        assert value_input_option in {"RAW", "USER_ENTERED"}
         stored.append(dict(zip(
             ("id", "data", "tarefa", "categoria", "status"),
             values,
@@ -362,22 +373,20 @@ def test_task_creation_reports_identical_retry_without_second_append(monkeypatch
     assert cache_clears == [True, True]
 
 
-def test_numeric_looking_title_is_an_identical_retry(monkeypatch):
+def test_numeric_looking_title_is_persisted_raw_and_retries_identically(monkeypatch):
     enable_mutations(monkeypatch)
     worksheet = FakeTaskWorksheet()
-    worksheet.rows.append([
-        PAYLOAD["id"],
-        PAYLOAD["date"],
-        "001",
-        PAYLOAD["category"],
-        "Pendente",
-    ])
     database.clear_records_cache("Tarefas")
     monkeypatch.setattr(database, "get_worksheet", lambda _name: worksheet)
     monkeypatch.setattr(task_mutations, "clear_dashboard_cache", lambda: None)
 
     try:
-        response = client.post(
+        first = client.post(
+            "/v1/tasks",
+            json={**PAYLOAD, "title": "001"},
+            headers=HEADERS,
+        )
+        retry = client.post(
             "/v1/tasks",
             json={**PAYLOAD, "title": "001"},
             headers=HEADERS,
@@ -385,10 +394,14 @@ def test_numeric_looking_title_is_an_identical_retry(monkeypatch):
     finally:
         database.clear_records_cache("Tarefas")
 
-    assert response.status_code == 200
-    assert response.json()["created"] is False
-    assert response.json()["task"]["title"] == "001"
-    assert worksheet.append_attempts == 0
+    assert first.status_code == 200
+    assert first.json()["created"] is True
+    assert retry.status_code == 200
+    assert retry.json()["created"] is False
+    assert retry.json()["task"]["title"] == "001"
+    assert worksheet.rows[0][2] == "001"
+    assert worksheet.append_attempts == 1
+    assert worksheet.value_input_options == ["RAW"]
 
 
 def test_retry_reloads_after_append_persists_but_response_is_lost(monkeypatch):
@@ -502,4 +515,12 @@ def test_openapi_declares_one_post_with_real_request_and_error_schemas():
     assert operation["responses"]["422"]["content"]["application/json"][
         "schema"
     ] == {"$ref": "#/components/schemas/MutationErrorResponse"}
+    token_headers = [
+        parameter
+        for parameter in operation["parameters"]
+        if parameter["in"] == "header" and parameter["name"] == "X-Nexo-Token"
+    ]
+    assert len(token_headers) == 1
+    assert token_headers[0]["required"] is True
+    assert token_headers[0]["schema"] == {"type": "string"}
     assert "HTTPValidationError" not in str(operation)

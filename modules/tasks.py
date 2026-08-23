@@ -66,6 +66,7 @@ def add(task, category, target_date=None, item_id=None):
             expected[column]
             for column in ("id", "data", "tarefa", "categoria", "status")
         ],
+        value_input_option="RAW",
     )
     return expected, True
 

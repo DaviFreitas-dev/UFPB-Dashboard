@@ -186,12 +186,12 @@ def replace_records(name, rows):
     clear_records_cache(name)
 
 
-def append_record(name, values):
+def append_record(name, values, value_input_option="USER_ENTERED"):
     clear_records_cache(name)
     try:
         get_worksheet(name).append_row(
             values,
-            value_input_option="USER_ENTERED",
+            value_input_option=value_input_option,
         )
     finally:
         clear_records_cache(name)

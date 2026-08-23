@@ -11,7 +11,9 @@ def test_add_uses_stable_id_and_returns_created_record(monkeypatch):
     monkeypatch.setattr(
         tasks,
         "append_record",
-        lambda name, values: appended.append((name, values)),
+        lambda name, values, value_input_option="USER_ENTERED": appended.append(
+            (name, values, value_input_option)
+        ),
     )
 
     record, created = tasks.add(
@@ -27,6 +29,7 @@ def test_add_uses_stable_id_and_returns_created_record(monkeypatch):
         (
             "Tarefas",
             ["task-stable-id", "2026-08-23", "Revisar matemática", "Estudo", "Pendente"],
+            "RAW",
         )
     ]
 

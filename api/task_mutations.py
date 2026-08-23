@@ -1,9 +1,10 @@
 import json
 import logging
 from datetime import date
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
 from pydantic import Field, ValidationError, field_validator
@@ -96,9 +97,18 @@ class MutationErrorResponse(ApiModel):
     error: MutationError
 
 
+def require_task_api_token(
+    x_nexo_token: Annotated[
+        str | None,
+        Header(alias="X-Nexo-Token", include_in_schema=False),
+    ] = None,
+):
+    require_api_token(x_nexo_token)
+
+
 async def parse_create_task_request(
     request: Request,
-    _token=Depends(require_api_token),
+    _token=Depends(require_task_api_token),
     _writes=Depends(require_api_writes),
 ) -> CreateTaskRequest:
     try:
@@ -132,6 +142,14 @@ async def parse_create_task_request(
         },
     },
     openapi_extra={
+        "parameters": [
+            {
+                "name": "X-Nexo-Token",
+                "in": "header",
+                "required": True,
+                "schema": {"type": "string"},
+            }
+        ],
         "requestBody": {
             "required": True,
             "content": {
