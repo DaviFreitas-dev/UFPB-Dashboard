@@ -14,6 +14,8 @@ from modules.config import SHEETS
 
 DASHBOARD_SHEETS = (
     "Usuario",
+    "Config",
+    "Ciclo",
     "Historico",
     "Questoes",
     "SessoesEstudo",
@@ -31,6 +33,7 @@ DASHBOARD_SHEETS = (
     "HabitosConfig",
     "Habitos",
     "Atividade",
+    "Conquistas",
 )
 
 _READ_ONLY_SCOPES = (

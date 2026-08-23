@@ -1,0 +1,485 @@
+.page {
+  width: min(1120px, 100%);
+  padding: 38px 40px 72px;
+  margin: 0 auto;
+  animation: pageIn 280ms var(--ease-out) both;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.eyebrow,
+.sectionHeading p {
+  margin: 0 0 7px;
+  color: var(--color-accent-soft);
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.pageHeader h1,
+.sectionHeading h2,
+.environments h2 {
+  margin: 0;
+  letter-spacing: -0.04em;
+}
+
+.pageHeader h1 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 720;
+}
+
+.intro {
+  margin: 8px 0 0;
+  color: var(--color-muted);
+  font-size: 0.86rem;
+}
+
+.headerMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  color: var(--color-muted-2);
+  font-size: 0.68rem;
+}
+
+.liveBadge,
+.demoBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: #aeb5c0;
+  background: #15181d;
+  font-size: 0.62rem;
+  font-weight: 650;
+}
+
+.liveBadge > span,
+.demoBadge > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #65b98d;
+}
+
+.demoBadge > span {
+  background: #c5a768;
+}
+
+.achievementSummary,
+.readOnlyNotice,
+.settingStats,
+.subjectPanel,
+.environments,
+.achievementNote {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.achievementSummary {
+  display: grid;
+  grid-template-columns: auto minmax(150px, 0.8fr) minmax(230px, 1fr);
+  align-items: center;
+  gap: 18px;
+  margin: 25px 0 34px;
+  padding: 20px 22px;
+}
+
+.summaryIcon,
+.achievementIcon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #343a45;
+  border-radius: 10px;
+  color: #aebded;
+  background: #202530;
+}
+
+.summaryIcon {
+  width: 42px;
+  height: 42px;
+}
+
+.summaryCopy span,
+.summaryProgress small,
+.subjectProgress span,
+.settingStats p {
+  color: var(--color-muted-2);
+  font-size: 0.65rem;
+}
+
+.summaryCopy span,
+.summaryCopy strong,
+.summaryProgress small,
+.subjectProgress span,
+.subjectProgress strong {
+  display: block;
+}
+
+.summaryCopy strong {
+  margin-top: 5px;
+  font-size: 1.2rem;
+  letter-spacing: -0.03em;
+}
+
+.summaryProgress {
+  display: grid;
+  gap: 8px;
+}
+
+.progressTrack {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #292e37;
+}
+
+.progressTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-accent);
+  transform-origin: left;
+  animation: grow 560ms var(--ease-out) both;
+}
+
+.section {
+  margin-top: 28px;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.sectionHeading h2,
+.environments h2 {
+  font-size: 1.02rem;
+  font-weight: 690;
+}
+
+.sectionHeading > span {
+  min-width: 25px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: var(--color-muted);
+  background: #20242a;
+  font-size: 0.62rem;
+  text-align: center;
+}
+
+.achievementGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.achievementCard,
+.achievementCardLocked {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  min-height: 145px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 13px;
+  background: var(--color-surface);
+  transition: border-color 180ms ease, transform 180ms ease;
+}
+
+.achievementCard:hover,
+.achievementCardLocked:hover {
+  border-color: #48546a;
+  transform: translateY(-1px);
+}
+
+.achievementCardLocked {
+  background: #15181c;
+}
+
+.achievementCardLocked .achievementIcon {
+  color: #727985;
+  background: #1a1e24;
+  border-color: #303641;
+}
+
+.achievementIcon {
+  width: 35px;
+  height: 35px;
+  border-radius: 9px;
+}
+
+.achievementCopy {
+  min-width: 0;
+}
+
+.achievementCopy > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.achievementCopy strong {
+  font-size: 0.78rem;
+  font-weight: 680;
+}
+
+.achievementCopy p {
+  margin: 8px 0;
+  color: var(--color-muted);
+  font-size: 0.66rem;
+  line-height: 1.5;
+}
+
+.achievementCopy small {
+  color: var(--color-muted-2);
+  font-size: 0.6rem;
+}
+
+.statusDone,
+.statusLocked,
+.hoursTag,
+.environmentList span {
+  flex: 0 0 auto;
+  padding: 4px 6px;
+  border-radius: 999px;
+  font-size: 0.55rem;
+  font-weight: 700;
+}
+
+.statusDone {
+  color: #9ac9b0;
+  background: #1c3027;
+}
+
+.statusLocked {
+  color: #858c98;
+  background: #242930;
+}
+
+.achievementNote,
+.readOnlyNotice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #a8b3ca;
+  background: #171c25;
+}
+
+.achievementNote {
+  margin-top: 18px;
+  padding: 13px 15px;
+}
+
+.achievementNote p,
+.readOnlyNotice p {
+  margin: 0;
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+.readOnlyNotice {
+  margin: 25px 0;
+  padding: 14px 16px;
+  border-color: #303a4d;
+}
+
+.settingStats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-bottom: 31px;
+}
+
+.settingStats > div {
+  min-width: 0;
+  padding: 18px 20px;
+}
+
+.settingStats > div + div {
+  border-left: 1px solid var(--color-border-soft);
+}
+
+.settingStats .summaryIcon {
+  width: 34px;
+  height: 34px;
+  margin-bottom: 12px;
+}
+
+.settingStats p {
+  margin: 0 0 5px;
+}
+
+.settingStats strong {
+  font-size: 1.06rem;
+  letter-spacing: -0.025em;
+}
+
+.subjectPanel {
+  overflow: hidden;
+}
+
+.subjectRow {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.9fr) minmax(180px, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  padding: 15px 17px;
+}
+
+.subjectRow + .subjectRow {
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.subjectMain strong,
+.subjectMain span {
+  display: block;
+}
+
+.subjectMain strong {
+  font-size: 0.73rem;
+  font-weight: 670;
+}
+
+.subjectMain span {
+  margin-top: 4px;
+  color: var(--color-muted-2);
+  font-size: 0.6rem;
+}
+
+.subjectProgress > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.subjectProgress strong {
+  color: #c2c8d2;
+  font-size: 0.61rem;
+  font-weight: 620;
+}
+
+.hoursTag {
+  min-width: 34px;
+  color: #b5c0e9;
+  background: #222b40;
+  text-align: center;
+}
+
+.environments {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 28px;
+  padding: 18px 20px;
+}
+
+.environments .eyebrow {
+  margin-bottom: 5px;
+}
+
+.environmentList {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.environmentList span {
+  color: #aeb8c8;
+  background: #20242c;
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding: 28px 18px 48px;
+  }
+
+  .pageHeader,
+  .environments {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .headerMeta,
+  .environmentList {
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  .achievementSummary {
+    grid-template-columns: auto 1fr;
+  }
+
+  .summaryProgress {
+    grid-column: 1 / -1;
+  }
+
+  .achievementGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .settingStats {
+    grid-template-columns: 1fr;
+  }
+
+  .settingStats > div + div {
+    border-top: 1px solid var(--color-border-soft);
+    border-left: 0;
+  }
+
+  .subjectRow {
+    grid-template-columns: 1fr auto;
+    gap: 13px;
+  }
+
+  .subjectProgress {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page,
+  .progressTrack span {
+    animation: none;
+  }
+
+  .achievementCard:hover,
+  .achievementCardLocked:hover {
+    transform: none;
+  }
+}

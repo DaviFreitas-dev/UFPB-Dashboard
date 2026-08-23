@@ -17,11 +17,15 @@ servidor da API. Essas variáveis são lidas apenas no servidor Next.js.
 
 ## Limites desta etapa
 
-- as telas Hoje, Planejar e Rotina são somente leitura;
-- as demais áreas e todas as edições continuam no Streamlit;
+- as doze áreas do NEXO já podem ser consultadas nesta interface;
+- todas as telas em Next.js são somente leitura;
+- cadastros, conclusões e demais edições continuam no Streamlit;
 - nenhuma credencial do Google Sheets pertence ao frontend;
-- os contratos esperados da API estão em `src/lib/dashboard.ts`,
-  `src/lib/planning.ts` e `src/lib/routine.ts`.
+- a troca do aplicativo publicado só deve acontecer depois de existir um único
+  caminho seguro para gravações e XP;
+- os contratos da API ficam agrupados em `src/lib/dashboard.ts`,
+  `src/lib/planning.ts`, `src/lib/routine.ts`, `src/lib/study-workspace.ts`,
+  `src/lib/personal-workspace.ts` e `src/lib/profile-workspace.ts`.
 
 ## Verificações
 

@@ -21,25 +21,40 @@ import type { DashboardUser } from "@/lib/dashboard";
 import { ratio } from "@/lib/dashboard";
 import styles from "./app-shell.module.css";
 
+export type AppPath =
+  | "/"
+  | "/planejar"
+  | "/rotina"
+  | "/ciclo"
+  | "/missoes"
+  | "/leitura"
+  | "/tarefas"
+  | "/habitos"
+  | "/atividade"
+  | "/progresso"
+  | "/conquistas"
+  | "/configuracoes"
+  | "/mais";
+
 type NavigationItem = {
   label: string;
   icon: LucideIcon;
-  href?: Route;
+  href: Route;
 };
 
 const navigation: NavigationItem[] = [
   { label: "Hoje", icon: CircleGauge, href: "/" },
   { label: "Planejar", icon: CalendarDays, href: "/planejar" },
   { label: "Rotina", icon: NotebookTabs, href: "/rotina" },
-  { label: "Ciclo", icon: Target },
-  { label: "Missões", icon: Sparkles },
-  { label: "Leitura", icon: BookOpen },
-  { label: "Tarefas", icon: CheckSquare2 },
-  { label: "Hábitos", icon: ListTodo },
-  { label: "Atividade", icon: Dumbbell },
-  { label: "Progresso", icon: ChartNoAxesCombined },
-  { label: "Conquistas", icon: Award },
-  { label: "Configurações", icon: Settings },
+  { label: "Ciclo", icon: Target, href: "/ciclo" },
+  { label: "Missões", icon: Sparkles, href: "/missoes" },
+  { label: "Leitura", icon: BookOpen, href: "/leitura" },
+  { label: "Tarefas", icon: CheckSquare2, href: "/tarefas" },
+  { label: "Hábitos", icon: ListTodo, href: "/habitos" },
+  { label: "Atividade", icon: Dumbbell, href: "/atividade" },
+  { label: "Progresso", icon: ChartNoAxesCombined, href: "/progresso" },
+  { label: "Conquistas", icon: Award, href: "/conquistas" },
+  { label: "Configurações", icon: Settings, href: "/configuracoes" },
 ];
 
 const mobileNavigation = navigation.filter(({ label }) =>
@@ -48,7 +63,7 @@ const mobileNavigation = navigation.filter(({ label }) =>
 
 type AppShellProps = {
   children: ReactNode;
-  currentPath: "/" | "/planejar" | "/rotina";
+  currentPath: AppPath;
   user: DashboardUser;
 };
 
@@ -79,32 +94,16 @@ export function AppShell({ children, currentPath, user }: AppShellProps) {
         <nav className={styles.navigation} aria-label="Navegação principal">
           {navigation.map(({ label, icon: Icon, href }) => {
             const active = href === currentPath;
-
-            if (href) {
-              return (
-                <Link
-                  aria-current={active ? "page" : undefined}
-                  className={active ? styles.navItemActive : styles.navItem}
-                  href={href}
-                  key={label}
-                >
-                  <Icon aria-hidden="true" size={17} strokeWidth={1.8} />
-                  <span>{label}</span>
-                </Link>
-              );
-            }
-
             return (
-              <button
-                className={styles.navItem}
-                disabled
+              <Link
+                aria-current={active ? "page" : undefined}
+                className={active ? styles.navItemActive : styles.navItem}
+                href={href}
                 key={label}
-                title="Disponível no NEXO atual"
-                type="button"
               >
                 <Icon aria-hidden="true" size={17} strokeWidth={1.8} />
                 <span>{label}</span>
-              </button>
+              </Link>
             );
           })}
         </nav>
@@ -115,32 +114,30 @@ export function AppShell({ children, currentPath, user }: AppShellProps) {
       <nav className={styles.mobileNav} aria-label="Navegação móvel">
         {mobileNavigation.map(({ label, icon: Icon, href }) => {
           const active = href === currentPath;
-
-          if (href) {
-            return (
-              <Link
-                aria-current={active ? "page" : undefined}
-                className={active ? styles.mobileItemActive : styles.mobileItem}
-                href={href}
-                key={label}
-              >
-                <Icon aria-hidden="true" size={20} strokeWidth={1.8} />
-                <span>{label}</span>
-              </Link>
-            );
-          }
-
           return (
-            <button className={styles.mobileItem} disabled key={label} type="button">
+            <Link
+              aria-current={active ? "page" : undefined}
+              className={active ? styles.mobileItemActive : styles.mobileItem}
+              href={href}
+              key={label}
+            >
               <Icon aria-hidden="true" size={20} strokeWidth={1.8} />
               <span>{label}</span>
-            </button>
+            </Link>
           );
         })}
-        <button className={styles.mobileItem} disabled type="button">
+        <Link
+          aria-current={!mobileNavigation.some(({ href }) => href === currentPath) ? "page" : undefined}
+          className={
+            !mobileNavigation.some(({ href }) => href === currentPath)
+              ? styles.mobileItemActive
+              : styles.mobileItem
+          }
+          href="/mais"
+        >
           <Settings aria-hidden="true" size={20} strokeWidth={1.8} />
           <span>Mais</span>
-        </button>
+        </Link>
       </nav>
     </div>
   );
