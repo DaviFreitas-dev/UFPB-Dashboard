@@ -13,6 +13,7 @@ from api.profile import load_profile_workspace
 from api.routine import load_routine_dashboard
 from api.security import require_api_token
 from api.studies import load_study_workspace
+from api.task_mutations import router as task_mutations_router
 from api.workspace_models import PersonalWorkspace, ProfileWorkspace, StudyWorkspace
 
 
@@ -24,6 +25,7 @@ app = FastAPI(
     version="0.1.0",
 )
 install_mutation_support(app)
+app.include_router(task_mutations_router)
 
 
 @app.get("/health", tags=["sistema"])
