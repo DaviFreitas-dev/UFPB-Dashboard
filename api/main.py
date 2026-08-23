@@ -1,17 +1,17 @@
-import hmac
 import logging
-import os
 from datetime import date
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, status
+from fastapi import Depends, FastAPI, HTTPException, Query, status
 
 from api.dashboard import load_today_dashboard
 from api.models import PlanningDashboard, RoutineDashboard, TodayDashboard
+from api.mutations import install_mutation_support
 from api.personal import load_personal_workspace
 from api.planning import load_planning_dashboard
 from api.profile import load_profile_workspace
 from api.routine import load_routine_dashboard
+from api.security import require_api_token
 from api.studies import load_study_workspace
 from api.workspace_models import PersonalWorkspace, ProfileWorkspace, StudyWorkspace
 
@@ -23,25 +23,7 @@ app = FastAPI(
     description="Leitura segura dos dados usados pela nova interface do NEXO.",
     version="0.1.0",
 )
-
-
-def require_api_token(
-    x_nexo_token: Annotated[
-        str | None,
-        Header(alias="X-Nexo-Token"),
-    ] = None,
-):
-    expected = os.getenv("NEXO_API_TOKEN", "").strip()
-    if not expected:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="O token da API não foi configurado.",
-        )
-    if not x_nexo_token or not hmac.compare_digest(x_nexo_token, expected):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token inválido.",
-        )
+install_mutation_support(app)
 
 
 @app.get("/health", tags=["sistema"])
