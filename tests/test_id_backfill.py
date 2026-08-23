@@ -1,3 +1,7 @@
+from pathlib import Path
+import subprocess
+import sys
+
 import pytest
 
 from modules import id_backfill
@@ -66,10 +70,43 @@ def test_backfill_defaults_to_dry_run(monkeypatch):
             return rows
 
     monkeypatch.setattr(id_backfill, "ID_SHEETS", ("Tarefas",))
-    monkeypatch.setattr(id_backfill, "get_worksheet", lambda _name: Worksheet())
+    monkeypatch.setattr(
+        id_backfill,
+        "get_existing_worksheet",
+        lambda _name: Worksheet(),
+        raising=False,
+    )
     monkeypatch.setattr(id_backfill, "write_values_batch", lambda updates: writes.append(updates))
 
     assert id_backfill.backfill_missing_ids() == {"Tarefas": 1}
+    assert writes == []
+
+
+def test_dry_run_does_not_create_a_missing_worksheet(monkeypatch):
+    creation_attempts = []
+    writes = []
+
+    def create_missing_worksheet(_name):
+        creation_attempts.append(_name)
+        raise AssertionError("dry-run must not create a worksheet")
+
+    monkeypatch.setattr(id_backfill, "ID_SHEETS", ("Tarefas",))
+    monkeypatch.setattr(
+        id_backfill,
+        "get_worksheet",
+        create_missing_worksheet,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        id_backfill,
+        "get_existing_worksheet",
+        lambda _name: None,
+        raising=False,
+    )
+    monkeypatch.setattr(id_backfill, "write_values_batch", lambda updates: writes.append(updates))
+
+    assert id_backfill.backfill_missing_ids() == {"Tarefas": 0}
+    assert creation_attempts == []
     assert writes == []
 
 
@@ -86,7 +123,12 @@ def test_backfill_applies_all_missing_ids_in_one_batch(monkeypatch):
             return rows
 
     monkeypatch.setattr(id_backfill, "ID_SHEETS", ("Tarefas",))
-    monkeypatch.setattr(id_backfill, "get_worksheet", lambda _name: Worksheet())
+    monkeypatch.setattr(
+        id_backfill,
+        "get_existing_worksheet",
+        lambda _name: Worksheet(),
+        raising=False,
+    )
     monkeypatch.setattr(id_backfill, "write_values_batch", lambda updates: writes.append(updates))
     monkeypatch.setattr(id_backfill.uuid, "uuid4", lambda: "stable-id")
 
@@ -103,3 +145,23 @@ def test_backfill_cli_requires_exact_confirmation():
     assert should_apply(True, "BACKFILL_IDS") is True
     assert should_apply(True, "backfill_ids") is False
     assert should_apply(False, "BACKFILL_IDS") is False
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        (sys.executable, "scripts/backfill_missing_ids.py", "--help"),
+        (sys.executable, "-m", "scripts.backfill_missing_ids", "--help"),
+    ],
+)
+def test_backfill_cli_help_runs_from_project_root(command):
+    result = subprocess.run(
+        command,
+        cwd=Path(__file__).resolve().parents[1],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "--apply" in result.stdout

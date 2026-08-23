@@ -61,6 +61,12 @@ def get_worksheet(name):
     return ws
 
 
+def get_existing_worksheet(name):
+    """Retorna uma aba existente sem criar schema quando ela está ausente."""
+    with _RECORDS_CACHE_LOCK:
+        return _worksheets_by_name().get(name)
+
+
 def _ensure_header(name, ws, current=_HEADER_NOT_PROVIDED):
     expected = SHEETS[name]
     if current is _HEADER_NOT_PROVIDED:

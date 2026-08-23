@@ -43,6 +43,26 @@ def test_matching_header_is_left_untouched():
     assert worksheet.insertions == []
 
 
+def test_existing_worksheet_lookup_does_not_create_a_missing_schema(monkeypatch):
+    creation_attempts = []
+
+    class FakeBook:
+        def worksheets(self):
+            return []
+
+        def add_worksheet(self, **_kwargs):
+            creation_attempts.append(_kwargs)
+            raise AssertionError("read-only lookup must not create a worksheet")
+
+    database._worksheets_by_name.cache_clear()
+    monkeypatch.setattr(database, "connect_sheet", lambda: FakeBook())
+
+    assert database.get_existing_worksheet("Tarefas") is None
+    assert creation_attempts == []
+
+    database._worksheets_by_name.cache_clear()
+
+
 def test_legacy_header_is_not_shifted_or_rewritten():
     worksheet = FakeWorksheet(["data", "tipo", "feito"])
 

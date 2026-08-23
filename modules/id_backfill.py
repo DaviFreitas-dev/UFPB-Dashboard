@@ -3,7 +3,7 @@
 import uuid
 
 from modules.config import SHEETS
-from modules.database import get_worksheet, write_values_batch
+from modules.database import get_existing_worksheet, write_values_batch
 
 
 ID_SHEETS = tuple(name for name, columns in SHEETS.items() if "id" in columns)
@@ -40,7 +40,8 @@ def backfill_missing_ids(apply=False):
     updates = []
     counts = {}
     for name in ID_SHEETS:
-        rows = get_worksheet(name).get(pad_values=True)
+        worksheet = get_existing_worksheet(name)
+        rows = worksheet.get(pad_values=True) if worksheet is not None else []
         sheet_updates = collect_missing_id_updates(name, rows)
         updates.extend(sheet_updates)
         counts[name] = len(sheet_updates)
