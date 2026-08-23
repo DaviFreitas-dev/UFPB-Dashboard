@@ -1,6 +1,10 @@
 import "server-only";
 
+import { requireAuthorizedSession } from "@/lib/auth-guard";
+
 export async function fetchNexoApi(path: string): Promise<unknown | null> {
+  await requireAuthorizedSession();
+
   const baseUrl = process.env.NEXO_API_URL?.replace(/\/$/, "");
   if (!baseUrl) {
     return null;

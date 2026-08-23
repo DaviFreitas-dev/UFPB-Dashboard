@@ -17,6 +17,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { signOut } from "@/auth";
 import type { DashboardUser } from "@/lib/dashboard";
 import { ratio } from "@/lib/dashboard";
 import styles from "./app-shell.module.css";
@@ -107,6 +108,18 @@ export function AppShell({ children, currentPath, user }: AppShellProps) {
             );
           })}
         </nav>
+
+        <form
+          action={async () => {
+            "use server";
+            await signOut({ redirectTo: "/entrar" });
+          }}
+          className={styles.signOutForm}
+        >
+          <button className={styles.signOutButton} type="submit">
+            Sair
+          </button>
+        </form>
       </aside>
 
       <main className={styles.main}>{children}</main>

@@ -95,6 +95,35 @@
   margin-top: 24px;
 }
 
+.signOutForm {
+  margin-top: auto;
+  padding: 18px 6px 0;
+}
+
+.signOutButton {
+  width: 100%;
+  min-height: 39px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.signOutButton:hover {
+  border-color: #3a4351;
+  color: var(--color-text);
+  background: #171a1f;
+}
+
+.signOutButton:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
 .navItem,
 .navItemActive {
   width: 100%;
@@ -205,5 +234,12 @@ a.navItem:hover {
 @media (prefers-reduced-motion: reduce) {
   .levelTrack span {
     animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .signOutButton {
+    transition: color 180ms ease, background 180ms ease,
+      border-color 180ms ease;
   }
 }
