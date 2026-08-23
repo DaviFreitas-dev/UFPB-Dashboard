@@ -17,14 +17,29 @@ afterEach(() => {
 });
 
 describe("proxy de autenticação", () => {
-  it.each(["/entrar", "/acesso-negado", "/api/auth/session", "/api/health"])(
-    "preserva a superfície pública %s",
-    (url) => {
-      expect(
-        unstable_doesProxyMatch({ config, nextConfig, url }),
-      ).toBe(false);
-    },
-  );
+  it.each([
+    "/entrar?callbackUrl=%2Ftarefas",
+    "/acesso-negado?error=AccessDenied",
+    "/api/auth/session?update=1",
+    "/api/health?probe=readiness",
+    "/_next/static/chunks/app.js?v=1",
+    "/_next/image?url=%2Flogo.png&w=64&q=75",
+    "/favicon.ico?v=1",
+  ])("preserva a superfície pública legítima %s", (url) => {
+    expect(unstable_doesProxyMatch({ config, nextConfig, url })).toBe(false);
+  });
+
+  it.each([
+    "/entrar-secreto",
+    "/acesso-negado-extra",
+    "/api/authz",
+    "/api/health-private",
+    "/_next/static-private/chunk.js",
+    "/_next/image-private",
+    "/favicon.ico-secreto",
+  ])("protege a rota parecida, mas não pública %s", (url) => {
+    expect(unstable_doesProxyMatch({ config, nextConfig, url })).toBe(true);
+  });
 
   it.each(["/", "/tarefas", "/configuracoes"])(
     "protege a superfície de produto %s",
