@@ -1,8 +1,11 @@
 import "server-only";
 
+import type { ZodType } from "zod";
+
 import { requireAuthorizedSession } from "@/lib/auth-guard";
 
 type ApiProblem = { code: string; message: string; operationId?: string };
+const AMBIGUOUS_API_MESSAGE = "Não foi possível confirmar a resposta da API.";
 
 export class NexoApiError extends Error {
   constructor(
@@ -49,7 +52,8 @@ function readApiProblem(payload: unknown): ApiProblem {
 
 export async function requestNexoApi<T>(
   path: string,
-  init: RequestInit = {},
+  init: RequestInit,
+  responseSchema: ZodType<T>,
 ): Promise<T> {
   await requireAuthorizedSession();
 
@@ -73,6 +77,13 @@ export async function requestNexoApi<T>(
   try {
     payload = await response.json();
   } catch {
+    if (response.ok) {
+      throw new NexoApiError(
+        response.status,
+        "ambiguous_api_response",
+        AMBIGUOUS_API_MESSAGE,
+      );
+    }
     const problem = readApiProblem(null);
     throw new NexoApiError(response.status, problem.code, problem.message);
   }
@@ -87,7 +98,15 @@ export async function requestNexoApi<T>(
     );
   }
 
-  return payload as T;
+  const parsed = responseSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new NexoApiError(
+      response.status,
+      "ambiguous_api_response",
+      AMBIGUOUS_API_MESSAGE,
+    );
+  }
+  return parsed.data;
 }
 
 export async function fetchNexoApi(path: string): Promise<unknown | null> {

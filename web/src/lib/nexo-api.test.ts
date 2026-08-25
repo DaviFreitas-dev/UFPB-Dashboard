@@ -3,8 +3,20 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { requireAuthorizedSession } from "@/lib/auth-guard";
 
 import { fetchNexoApi, NexoApiError, requestNexoApi } from "./nexo-api";
+import { CreateTaskResponseSchema } from "./task-mutation-contract";
 
 const requireAuthorizedSessionMock = vi.mocked(requireAuthorizedSession);
+const VALID_TASK_RESPONSE = {
+  operationId: "task-request-1",
+  created: true,
+  task: {
+    id: "0f3ac9b0-5779-40ce-834d-40a8657684af",
+    date: "2026-08-23",
+    title: "Revisar matemática",
+    category: "Estudo",
+    completed: false,
+  },
+};
 
 afterEach(() => {
   requireAuthorizedSessionMock.mockReset();
@@ -48,7 +60,11 @@ describe("requestNexoApi", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      requestNexoApi("/v1/tasks", { method: "POST", body: "{}" }),
+      requestNexoApi(
+        "/v1/tasks",
+        { method: "POST", body: "{}" },
+        CreateTaskResponseSchema,
+      ),
     ).rejects.toThrow("Acesso não autorizado.");
     expect(requireAuthorizedSessionMock).toHaveBeenCalledOnce();
     expect(fetchMock).not.toHaveBeenCalled();
@@ -76,7 +92,7 @@ describe("requestNexoApi", () => {
     const error = await requestNexoApi("/v1/tasks", {
       method: "POST",
       body: JSON.stringify({ id: "task-1" }),
-    }).catch((reason: unknown) => reason);
+    }, CreateTaskResponseSchema).catch((reason: unknown) => reason);
 
     expect(error).toBeInstanceOf(NexoApiError);
     expect(error).toMatchObject({
@@ -97,7 +113,11 @@ describe("requestNexoApi", () => {
     );
 
     await expect(
-      requestNexoApi("/v1/tasks", { method: "POST", body: "{}" }),
+      requestNexoApi(
+        "/v1/tasks",
+        { method: "POST", body: "{}" },
+        CreateTaskResponseSchema,
+      ),
     ).rejects.toMatchObject({
       status: 500,
       code: "unexpected_api_error",
@@ -126,7 +146,7 @@ describe("requestNexoApi", () => {
       const error = await requestNexoApi("/v1/tasks", {
         method: "POST",
         body: "{}",
-      }).catch((reason: unknown) => reason);
+      }, CreateTaskResponseSchema).catch((reason: unknown) => reason);
 
       expect(error).toBeInstanceOf(NexoApiError);
       expect(error).toMatchObject({
@@ -139,15 +159,79 @@ describe("requestNexoApi", () => {
     },
   );
 
+  it.each([
+    ["objeto vazio", {}],
+    [
+      "problema com status 2xx",
+      {
+        error: {
+          code: "write_failed",
+          message: "detalhe privado do upstream",
+          operationId: "operation-private",
+        },
+      },
+    ],
+  ])("trata %s como falha ambígua sanitizada", async (_label, payload) => {
+    process.env.NEXO_API_URL = "http://127.0.0.1:8000";
+    process.env.NEXO_API_TOKEN = "server-test";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(payload), { status: 200 }),
+      ),
+    );
+
+    const error = await requestNexoApi(
+      "/v1/tasks",
+      { method: "POST", body: "{}" },
+      CreateTaskResponseSchema,
+    ).catch((reason: unknown) => reason);
+
+    expect(error).toBeInstanceOf(NexoApiError);
+    expect(error).toMatchObject({
+      status: 200,
+      code: "ambiguous_api_response",
+      message: "Não foi possível confirmar a resposta da API.",
+    });
+    expect(String(error)).not.toContain("detalhe privado do upstream");
+  });
+
+  it.each([true, false])(
+    "valida o contrato real de sucesso com created=%s",
+    async (created) => {
+      process.env.NEXO_API_URL = "http://127.0.0.1:8000";
+      process.env.NEXO_API_TOKEN = "server-test";
+      const expected = { ...VALID_TASK_RESPONSE, created };
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(JSON.stringify(expected), { status: 200 }),
+        ),
+      );
+
+      await expect(
+        requestNexoApi(
+          "/v1/tasks",
+          { method: "POST", body: "{}" },
+          CreateTaskResponseSchema,
+        ),
+      ).resolves.toEqual(expected);
+    },
+  );
+
   it("mantém token e JSON somente na chamada do servidor", async () => {
     process.env.NEXO_API_URL = "http://127.0.0.1:8000";
     process.env.NEXO_API_TOKEN = "server-test";
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      new Response(JSON.stringify(VALID_TASK_RESPONSE), { status: 200 }),
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    await requestNexoApi("/v1/tasks", { method: "POST", body: "{}" });
+    await requestNexoApi(
+      "/v1/tasks",
+      { method: "POST", body: "{}" },
+      CreateTaskResponseSchema,
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/v1/tasks",

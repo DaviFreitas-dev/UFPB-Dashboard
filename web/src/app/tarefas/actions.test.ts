@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { requireAuthorizedSession } from "@/lib/auth-guard";
 import { NexoApiError, requestNexoApi } from "@/lib/nexo-api";
+import {
+  CreateTaskResponseSchema,
+  type CreateTaskResponse,
+} from "@/lib/task-mutation-contract";
 
 import { createTaskAction } from "./actions";
 import { initialCreateTaskState } from "./task-create-state";
@@ -23,6 +27,24 @@ function validForm() {
   form.set("category", "  Estudo  ");
   form.set("date", "2026-08-23");
   return form;
+}
+
+function confirmedResponse(
+  created = true,
+  task: Partial<CreateTaskResponse["task"]> = {},
+): CreateTaskResponse {
+  return {
+    operationId: "task-request-1",
+    created,
+    task: {
+      id: "0f3ac9b0-5779-40ce-834d-40a8657684af",
+      date: "2026-08-23",
+      title: "Revisar matemática",
+      category: "Estudo",
+      completed: false,
+      ...task,
+    },
+  };
 }
 
 beforeEach(() => {
@@ -125,7 +147,9 @@ describe("createTaskAction", () => {
     expect(requestNexoApi).not.toHaveBeenCalled();
 
     form.set("itemId", invalidState.submittedItemId as string);
-    vi.mocked(requestNexoApi).mockResolvedValue({ created: true });
+    vi.mocked(requestNexoApi).mockResolvedValue(
+      confirmedResponse(true, { id: invalidState.submittedItemId as string }),
+    );
     const retryState = await createTaskAction(invalidState, form);
 
     expect(retryState.status).toBe("success");
@@ -133,7 +157,7 @@ describe("createTaskAction", () => {
   });
 
   it("envia valores normalizados e revalida depois do sucesso", async () => {
-    vi.mocked(requestNexoApi).mockResolvedValue({ created: true });
+    vi.mocked(requestNexoApi).mockResolvedValue(confirmedResponse());
 
     const state = await createTaskAction(initialCreateTaskState, validForm());
 
@@ -145,7 +169,7 @@ describe("createTaskAction", () => {
         title: "Revisar matemática",
         category: "Estudo",
       }),
-    });
+    }, CreateTaskResponseSchema);
     expect(revalidatePath.mock.calls).toEqual([["/tarefas"], ["/"]]);
     expect(state.status).toBe("success");
     expect(state.submittedItemId).toBe(
@@ -155,7 +179,7 @@ describe("createTaskAction", () => {
   });
 
   it("trata created=false como replay confirmado e gira o UUID", async () => {
-    vi.mocked(requestNexoApi).mockResolvedValue({ created: false });
+    vi.mocked(requestNexoApi).mockResolvedValue(confirmedResponse(false));
 
     const state = await createTaskAction(initialCreateTaskState, validForm());
 
@@ -167,6 +191,51 @@ describe("createTaskAction", () => {
     expect(state.nextItemId).toMatch(/^[0-9a-f-]{36}$/);
     expect(state.nextItemId).not.toBe(state.submittedItemId);
     expect(revalidatePath.mock.calls).toEqual([["/tarefas"], ["/"]]);
+  });
+
+  it.each([
+    ["id", "b6f79644-8787-40a7-8d5d-4f83078657ab"],
+    ["date", "2026-08-24"],
+    ["title", "Outra tarefa"],
+    ["category", "Pessoal"],
+  ] as const)(
+    "trata divergência do campo imutável %s como falha ambígua",
+    async (field, value) => {
+      vi.mocked(requestNexoApi).mockResolvedValue(
+        confirmedResponse(true, { [field]: value }),
+      );
+
+      const state = await createTaskAction(initialCreateTaskState, validForm());
+
+      expect(state).toMatchObject({
+        status: "error",
+        message: "Não foi possível confirmar se a tarefa foi salva. Tente novamente.",
+        submittedItemId: "0f3ac9b0-5779-40ce-834d-40a8657684af",
+        nextItemId: null,
+      });
+      expect(revalidatePath).not.toHaveBeenCalled();
+    },
+  );
+
+  it("preserva o UUID quando um 2xx não confirma o contrato", async () => {
+    vi.mocked(requestNexoApi).mockRejectedValue(
+      new NexoApiError(
+        200,
+        "ambiguous_api_response",
+        "detalhe privado",
+      ),
+    );
+
+    const state = await createTaskAction(initialCreateTaskState, validForm());
+
+    expect(state).toMatchObject({
+      status: "error",
+      message: "Não foi possível confirmar se a tarefa foi salva. Tente novamente.",
+      submittedItemId: "0f3ac9b0-5779-40ce-834d-40a8657684af",
+      nextItemId: null,
+    });
+    expect(state.message).not.toContain("detalhe privado");
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 
   it("traduz bloqueio de escrita sem perder o ID enviado", async () => {
@@ -222,6 +291,7 @@ describe("createTaskAction", () => {
             "0f3ac9b0-5779-40ce-834d-40a8657684af",
           ),
         }),
+        CreateTaskResponseSchema,
       ],
       [
         "/v1/tasks",
@@ -230,6 +300,7 @@ describe("createTaskAction", () => {
             "0f3ac9b0-5779-40ce-834d-40a8657684af",
           ),
         }),
+        CreateTaskResponseSchema,
       ],
     ]);
     expect(retry).toMatchObject({

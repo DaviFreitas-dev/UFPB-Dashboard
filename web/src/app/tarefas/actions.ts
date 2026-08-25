@@ -7,6 +7,7 @@ import * as z from "zod";
 
 import { requireAuthorizedSession } from "@/lib/auth-guard";
 import { NexoApiError, requestNexoApi } from "@/lib/nexo-api";
+import { CreateTaskResponseSchema } from "@/lib/task-mutation-contract";
 import { mutationsUiEnabled } from "@/lib/write-policy";
 
 import type { CreateTaskState } from "./task-create-state";
@@ -70,16 +71,35 @@ export async function createTaskAction(
     };
   }
 
+  const requestedTask = {
+    id: parsed.data.itemId,
+    date: parsed.data.date,
+    title: parsed.data.title,
+    category: parsed.data.category,
+  };
+
   try {
-    await requestNexoApi("/v1/tasks", {
-      method: "POST",
-      body: JSON.stringify({
-        id: parsed.data.itemId,
-        date: parsed.data.date,
-        title: parsed.data.title,
-        category: parsed.data.category,
-      }),
-    });
+    const response = await requestNexoApi(
+      "/v1/tasks",
+      {
+        method: "POST",
+        body: JSON.stringify(requestedTask),
+      },
+      CreateTaskResponseSchema,
+    );
+    if (
+      response.task.id !== requestedTask.id ||
+      response.task.date !== requestedTask.date ||
+      response.task.title !== requestedTask.title ||
+      response.task.category !== requestedTask.category
+    ) {
+      throw new NexoApiError(
+        200,
+        "ambiguous_api_response",
+        "A API respondeu com uma tarefa diferente da solicitada.",
+        response.operationId,
+      );
+    }
   } catch (error) {
     const message =
       error instanceof NexoApiError && error.code === "writes_disabled"
@@ -87,6 +107,9 @@ export async function createTaskAction(
         : error instanceof NexoApiError &&
             error.code === "idempotency_conflict"
           ? "Este formulário já foi enviado com outros dados. Atualize a página e tente novamente."
+          : error instanceof NexoApiError &&
+              error.code === "ambiguous_api_response"
+            ? "Não foi possível confirmar se a tarefa foi salva. Tente novamente."
           : "Não foi possível adicionar a tarefa agora.";
     return {
       status: "error",
