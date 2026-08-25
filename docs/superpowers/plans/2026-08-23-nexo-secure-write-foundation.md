@@ -10,6 +10,22 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-23-nexo-write-migration-design.md`
 
+## Canonical final-review errata (2026-08-25)
+
+- The implemented private web gate is `NEXO_WEB_WRITES_ENABLED`. The earlier
+  name `NEXO_MUTATIONS_UI_ENABLED` is obsolete and must not be used; this
+  erratum overrides any historical snippet or operational note that retained
+  that name.
+- The accepted backfill contract is now a persisted, reviewable JSON plan:
+  `--plan-out` generates exact worksheet/cell/row/UUID entries and
+  `--apply-plan ... --confirm BACKFILL_IDS` consumes that same reviewed file.
+- For any future real run, first enter maintenance and stop every Streamlit
+  write path, then wait for in-flight requests and the maximum cache TTL.
+  Generate, review, apply and verify the definitive plan while still
+  quiescent. Keep both `NEXO_API_WRITES_ENABLED=false` and
+  `NEXO_WEB_WRITES_ENABLED=false` through the end of that verification. This
+  plan performs no operational action.
+
 ## Global Constraints
 
 - O código atual da `main` prevalece sobre `AGENTS.md`; `AGENTS.md` prevalece sobre o histórico antigo.
@@ -20,7 +36,7 @@
 - Preservar linhas e schemas legados; preencher apenas IDs vazios e nunca limpar uma aba para migrá-los.
 - O cache de leitura continua com TTL de 15 segundos e só é invalidado depois de uma escrita confirmada.
 - A API de produção deve recusar escritas quando `NEXO_API_WRITES_ENABLED` estiver ausente ou diferente de `true`.
-- A interface deve esconder mutações quando `NEXO_MUTATIONS_UI_ENABLED` estiver ausente ou diferente de `true`.
+- A interface deve esconder mutações quando `NEXO_WEB_WRITES_ENABLED` estiver ausente ou diferente de `true`.
 - Autorização usa `NEXO_ALLOWED_GITHUB_ID`, o ID numérico imutável da conta `DaviFreitas-dev`; o login é apenas identificação visível.
 - Nenhuma variável secreta poderá usar o prefixo `NEXT_PUBLIC_`.
 - A primeira versão de escrita usa uma instância e um processo FastAPI.
@@ -1496,7 +1512,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mutationsUiEnabled } from "./write-policy";
 
 afterEach(() => {
-  delete process.env.NEXO_MUTATIONS_UI_ENABLED;
+  delete process.env.NEXO_WEB_WRITES_ENABLED;
 });
 
 describe("mutationsUiEnabled", () => {
@@ -1505,7 +1521,7 @@ describe("mutationsUiEnabled", () => {
   });
 
   it("aceita somente true explícito", () => {
-    process.env.NEXO_MUTATIONS_UI_ENABLED = "true";
+    process.env.NEXO_WEB_WRITES_ENABLED = "true";
     expect(mutationsUiEnabled()).toBe(true);
   });
 });
@@ -1517,7 +1533,7 @@ describe("mutationsUiEnabled", () => {
 import "server-only";
 
 export function mutationsUiEnabled(): boolean {
-  return process.env.NEXO_MUTATIONS_UI_ENABLED?.trim().toLowerCase() === "true";
+  return process.env.NEXO_WEB_WRITES_ENABLED?.trim().toLowerCase() === "true";
 }
 ```
 
@@ -2020,7 +2036,7 @@ Run from `web/`: `pnpm test -- src/lib/nexo-api.test.ts src/lib/write-policy.tes
 
 Run from `web/`: `pnpm test && pnpm lint && pnpm typecheck && pnpm build`
 
-Expected: all commands succeed with both `NEXO_MUTATIONS_UI_ENABLED` and live API writes absent.
+Expected: all commands succeed with both `NEXO_WEB_WRITES_ENABLED` and live API writes absent.
 
 - [ ] **Step 12: Commit Task 8**
 
@@ -2039,7 +2055,7 @@ git commit -m "feat(web): preparar criacao segura de tarefas"
 - Modify: `.gitignore` only if a new local Auth.js file is not already covered
 
 **Interfaces:**
-- Documents Vercel names: `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`, `AUTH_SECRET`, `NEXO_ALLOWED_GITHUB_ID`, `NEXO_API_URL`, `NEXO_API_TOKEN`, `NEXO_MUTATIONS_UI_ENABLED`
+- Documents Vercel names: `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`, `AUTH_SECRET`, `NEXO_ALLOWED_GITHUB_ID`, `NEXO_API_URL`, `NEXO_API_TOKEN`, `NEXO_WEB_WRITES_ENABLED`
 - Documents Render names: `NEXO_API_TOKEN`, `GSHEETS_SERVICE_ACCOUNT_JSON`, `NEXO_API_WRITES_ENABLED`, `NEXO_TIMEZONE`
 - Documents GitHub callback: `/api/auth/callback/github`
 - Keeps every example value empty or fictitious
@@ -2064,7 +2080,7 @@ AUTH_SECRET=
 NEXO_ALLOWED_GITHUB_ID=
 NEXO_API_URL=http://127.0.0.1:8000
 NEXO_API_TOKEN=
-NEXO_MUTATIONS_UI_ENABLED=false
+NEXO_WEB_WRITES_ENABLED=false
 ```
 
 - [ ] **Step 2: Document local login and write-safety behavior**
@@ -2126,10 +2142,10 @@ Check the final code and examples for these defaults:
 
 ```text
 NEXO_API_WRITES_ENABLED missing or false -> FastAPI returns writes_disabled
-NEXO_MUTATIONS_UI_ENABLED missing or false -> no task form is rendered
+NEXO_WEB_WRITES_ENABLED missing or false -> no task form is rendered
 ```
 
-Do not call `scripts/backfill_missing_ids.py --apply` and do not send a live `POST /v1/tasks`.
+Do not call `scripts/backfill_missing_ids.py --apply-plan` and do not send a live `POST /v1/tasks`.
 
 - [ ] **Step 7: Commit Task 9**
 

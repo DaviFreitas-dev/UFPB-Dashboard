@@ -61,19 +61,28 @@ fechado, e o gate da API continua recusando qualquer tentativa de escrita.
 
 Antes de qualquer corte futuro, execute manualmente, com revisão humana:
 
-1. Confirme que há apenas uma instância e um processo escritor e que o
-   Streamlit ainda é o único escritor em uso.
-2. Execute primeiro somente o dry-run do preenchimento de IDs:
-   `python scripts/backfill_missing_ids.py`. Revise as abas, linhas e IDs
-   propostos; esse passo não altera a planilha.
-3. Faça um backup verificável da planilha e revise novamente o resultado do
-   dry-run. Só depois de uma decisão explícita, use o apply com a confirmação
-   exata: `python scripts/backfill_missing_ids.py --apply --confirm BACKFILL_IDS`.
-4. Em uma janela curta sem uso, desative as escritas do Streamlit, aguarde o
-   maior TTL de cache e confirme de novo que existe somente um escritor.
-5. Apenas então, em uma entrega aprovada para o corte, habilite a API e faça
-   mutações pequenas e verificáveis. Nunca deixe Streamlit e FastAPI como
-   escritores ao mesmo tempo.
+1. Confirme `NEXO_API_WRITES_ENABLED=false` e
+   `NEXO_WEB_WRITES_ENABLED=false`, escolha uma janela curta de manutenção e
+   confirme que o Streamlit ainda é o único escritor em uso.
+2. Entre em manutenção e pare **todas** as escritas Streamlit antes do dry-run
+   definitivo. Interrompa o aplicativo ou use um mecanismo que impeça todos os
+   fluxos de mutação; confirme que o caminho antigo já não consegue gravar.
+3. Aguarde requisições em andamento e pelo menos o maior TTL de cache atual
+   (15 segundos). Confirme que não existe nenhum processo escritor ativo.
+4. Faça um backup verificável da planilha já em quiescência.
+5. Ainda em quiescência, gere e persista o plano definitivo, sem escrita:
+   `python scripts/backfill_missing_ids.py --plan-out reviewed-backfill-plan.json`.
+6. Revise o console e o JSON: estado de cada aba, linha, célula e UUID exato.
+   Mantenha o Streamlit parado. Se qualquer dado mudar, descarte o plano e
+   recomece a partir de um novo dry-run em quiescência.
+7. Depois da revisão humana explícita, aplique exatamente o arquivo revisado:
+   `python scripts/backfill_missing_ids.py --apply-plan reviewed-backfill-plan.json --confirm BACKFILL_IDS`.
+8. Sem sair da manutenção, verifique cabeçalhos, células alteradas, UUIDs e
+   contagens. Os gates FastAPI e web devem continuar fechados até o fim dessa
+   verificação.
+9. A ativação de `NEXO_API_WRITES_ENABLED` e, depois, de
+   `NEXO_WEB_WRITES_ENABLED` pertence a uma decisão de corte separada e
+   posterior. Nunca deixe Streamlit e FastAPI como escritores ao mesmo tempo.
 
 Os comandos acima são instruções operacionais: este README não executa
 backfill, OAuth, chamadas à planilha nem mudanças de configuração. Em caso de

@@ -21,7 +21,10 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="NEXO API",
-    description="Leitura segura dos dados usados pela nova interface do NEXO.",
+    description=(
+        "Leituras protegidas e mutações protegidas do NEXO, "
+        "com escritas desativadas por padrão."
+    ),
     version="0.1.0",
 )
 install_mutation_support(app)

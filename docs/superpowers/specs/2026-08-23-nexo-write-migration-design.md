@@ -6,6 +6,19 @@
 
 **Escopo:** autenticação, operações de escrita, experiência de edição e corte do Streamlit para a nova interface
 
+## Errata canônica da fundação
+
+A implementação desta entrega usa `NEXO_WEB_WRITES_ENABLED` como gate privado
+do formulário web. O nome anterior `NEXO_MUTATIONS_UI_ENABLED` está obsoleto,
+não ativa nenhum recurso e não deve aparecer em configuração ou orientação
+operacional. Este erratum prevalece sobre referências históricas ao nome
+anterior.
+
+A fundação já contém uma mutação protegida (`POST /v1/tasks`), mas os gates web
+e FastAPI permanecem fechados por padrão. Portanto, “somente leitura” nesta
+entrega descreve o estado operacional com os gates fechados, não a ausência de
+rotas ou componentes de mutação.
+
 ## 1. Contexto
 
 O NEXO possui uma aplicação Streamlit funcional, uma interface Next.js com as 12 áreas do produto em modo de leitura e uma API FastAPI que consulta o Google Sheets. A próxima etapa é permitir que a nova interface também altere os dados, sem comprometer o histórico, a deduplicação de XP ou a possibilidade de voltar temporariamente ao Streamlit.
@@ -99,6 +112,11 @@ As páginas protegidas redirecionarão visitantes sem sessão para o login. Uma 
 
 O FastAPI continuará exigindo autenticação em todas as rotas de dados. As rotas de escrita também exigirão que `NEXO_API_WRITES_ENABLED` esteja explicitamente ativado. O valor ausente ou inválido significa **escritas bloqueadas**.
 
+O servidor Next.js terá o gate privado separado `NEXO_WEB_WRITES_ENABLED`.
+Ausente, inválido ou diferente de `true`, ele ocultará o formulário de criação
+de tarefa. Esse controle de apresentação não substitui a revalidação da sessão,
+o token servidor-a-servidor nem o gate do FastAPI.
+
 A API será chamada apenas pelo servidor Next.js. Não será aberto um fluxo de escrita direto do navegador e não será necessário liberar CORS para o cliente.
 
 O Streamlit terá um portão central separado, `NEXO_STREAMLIT_WRITES_ENABLED`. Nas três primeiras entregas, sua ausência manterá o comportamento legado para não interromper a aplicação atual. Na entrega de corte, o padrão passará a ser bloqueado e uma ativação explícita será reservada ao procedimento de retorno. Os controles da interface antiga também indicarão o modo somente leitura.
@@ -110,6 +128,7 @@ Credenciais reais existirão somente nos gerenciadores de segredo da Vercel, Ren
 Os nomes previstos são:
 
 - Vercel: `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`, `AUTH_SECRET`, `NEXO_ALLOWED_GITHUB_ID`, `NEXO_API_URL` e `NEXO_API_TOKEN`;
+- Vercel, para a mutação protegida: `NEXO_WEB_WRITES_ENABLED`, fechado por padrão;
 - Render: `NEXO_API_TOKEN`, `GSHEETS_SERVICE_ACCOUNT_JSON`, `NEXO_API_WRITES_ENABLED` e `NEXO_TIMEZONE`;
 - Streamlit Community Cloud: a seção atual `gsheets` e `NEXO_STREAMLIT_WRITES_ENABLED`.
 
@@ -134,7 +153,7 @@ Streamlit continuará responsável apenas por sua integração de secrets, cache
 
 Todas as leituras continuarão tolerando campos ausentes. Identificadores sintéticos usados apenas para apresentação não poderão ser enviados como IDs persistentes de escrita.
 
-Antes do corte, uma rotina não destrutiva atribuirá UUIDs somente às linhas mutáveis que ainda não possuem `id`. Ela preencherá apenas as células de ID vazias, sem reordenar, limpar ou regravar a aba inteira. A rotina será testada com dados legados, executada depois do backup e poderá ser repetida sem alterar IDs já existentes.
+Antes do corte, uma rotina não destrutiva atribuirá UUIDs somente às linhas mutáveis que ainda não possuem `id`. Ela preencherá apenas as células de ID vazias, sem reordenar, limpar ou regravar a aba inteira. A rotina será testada com dados legados e executada somente em quiescência, depois de parar todas as escritas Streamlit e fazer o backup. O dry-run definitivo persistirá um plano com os UUIDs exatos; o apply consumirá esse mesmo plano revisado e revalidará cabeçalhos e células vazias antes da gravação em lote.
 
 Mudanças de cabeçalho deverão acrescentar colunas, nunca limpar uma aba. Nenhum ajuste de schema poderá apagar o histórico.
 
@@ -357,24 +376,27 @@ Testes automatizados nunca zerarão o progresso nem apagarão dados da planilha 
 
 ### 13.1 Antes do corte
 
-1. publicar Vercel e Render com escritas da API desativadas;
-2. validar login e bloqueio de conta não autorizada;
+1. publicar Vercel e Render com `NEXO_WEB_WRITES_ENABLED=false` e `NEXO_API_WRITES_ENABLED=false`;
+2. validar login, bloqueio de conta não autorizada e leituras, sem ativar mutações;
 3. comparar todas as leituras relevantes com o Streamlit e o Google Sheets;
-4. executar as suítes completas;
-5. exportar ou copiar a planilha como backup;
-6. executar o preenchimento idempotente de IDs ausentes e conferir as células alteradas;
-7. escolher uma janela curta sem uso do aplicativo.
+4. executar as suítes completas e escolher uma janela curta de manutenção;
+5. entrar em manutenção e parar **todas** as escritas Streamlit antes do dry-run definitivo; confirmar que nenhum fluxo antigo consegue alterar dados;
+6. aguardar requisições em andamento e pelo menos o maior TTL de cache configurado;
+7. exportar ou copiar a planilha como backup verificável já em quiescência;
+8. gerar e persistir o plano definitivo com `python scripts/backfill_missing_ids.py --plan-out reviewed-backfill-plan.json`;
+9. ainda em quiescência, revisar estado de cada aba, linha, célula e UUID exato; qualquer mudança invalida o plano e exige um novo dry-run;
+10. aplicar exatamente o arquivo revisado com `python scripts/backfill_missing_ids.py --apply-plan reviewed-backfill-plan.json --confirm BACKFILL_IDS`;
+11. verificar cabeçalhos, células alteradas, UUIDs e contagens antes de sair da manutenção;
+12. confirmar que os gates FastAPI e web permaneceram fechados durante todo o dry-run, revisão, apply e verificação.
 
 ### 13.2 Corte
 
-1. desativar escritas no Streamlit;
-2. confirmar que o antigo fluxo realmente recusa alterações;
-3. aguardar o maior TTL de cache;
-4. confirmar que existe apenas uma instância/processo escritor no Render;
-5. ativar `NEXO_API_WRITES_ENABLED`;
-6. executar mutações pequenas com IDs únicos;
-7. conferir as abas afetadas, totais e `XPEventos`;
-8. validar a experiência completa pelo navegador.
+1. obter uma decisão explícita de corte somente depois da verificação do backfill;
+2. confirmar que o Streamlit continua sem escritas e que existe apenas uma instância/processo no Render;
+3. ativar `NEXO_API_WRITES_ENABLED` e executar mutações pequenas com IDs únicos, mantendo `NEXO_WEB_WRITES_ENABLED=false`;
+4. conferir as abas afetadas, totais e `XPEventos`;
+5. ativar `NEXO_WEB_WRITES_ENABLED` somente após a confirmação do caminho FastAPI;
+6. validar a experiência completa pelo navegador.
 
 O sistema nunca deverá manter Streamlit e FastAPI habilitados como escritores ao mesmo tempo.
 
@@ -401,6 +423,11 @@ O FastAPI terá endpoint de saúde sem consulta à planilha e logs estruturados 
 - identificador estável da mutação;
 - resultado e duração;
 - abas afetadas, sem conteúdo das linhas.
+
+Para a criação de tarefas, os eventos distinguirão `create`, `replay`,
+`conflict` e `failure`, registrarão status, rota, `Tarefas` e o UUID da tarefa
+somente depois de validado. O identificador de requisição/operação será usado
+para correlação sem registrar o payload.
 
 Tokens, credenciais, anotações, diário e corpos completos de formulário não serão registrados.
 
