@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { requireAuthorizedSession } from "@/lib/auth-guard";
 import { NexoApiError, requestNexoApi } from "@/lib/nexo-api";
 
-import { createTaskAction, initialCreateTaskState } from "./actions";
+import { createTaskAction } from "./actions";
+import { initialCreateTaskState } from "./task-create-state";
 
 const { revalidatePath } = vi.hoisted(() => ({ revalidatePath: vi.fn() }));
 
@@ -25,6 +26,7 @@ function validForm() {
 }
 
 beforeEach(() => {
+  process.env.NEXO_WEB_WRITES_ENABLED = "true";
   requireAuthorizedSessionMock.mockReset();
   requireAuthorizedSessionMock.mockResolvedValue({
     user: { githubId: "test-user", githubLogin: "DaviFreitas-dev" },
@@ -33,8 +35,13 @@ beforeEach(() => {
   revalidatePath.mockReset();
 });
 
+afterEach(() => {
+  delete process.env.NEXO_WEB_WRITES_ENABLED;
+});
+
 describe("createTaskAction", () => {
   it("revalida a autorização antes de ler o formulário", async () => {
+    delete process.env.NEXO_WEB_WRITES_ENABLED;
     requireAuthorizedSessionMock.mockRejectedValue(
       new Error("Acesso não autorizado."),
     );
@@ -48,6 +55,35 @@ describe("createTaskAction", () => {
     expect(get).not.toHaveBeenCalled();
     expect(requestNexoApi).not.toHaveBeenCalled();
   });
+
+  it.each([undefined, "false"])(
+    "bloqueia invocação direta antes de ler o formulário com flag %s",
+    async (flag) => {
+      if (flag === undefined) {
+        delete process.env.NEXO_WEB_WRITES_ENABLED;
+      } else {
+        process.env.NEXO_WEB_WRITES_ENABLED = flag;
+      }
+      const get = vi.fn(() => {
+        throw new Error("O formulário não deveria ser lido.");
+      });
+
+      const state = await createTaskAction(
+        initialCreateTaskState,
+        { get } as unknown as FormData,
+      );
+
+      expect(requireAuthorizedSessionMock).toHaveBeenCalledOnce();
+      expect(get).not.toHaveBeenCalled();
+      expect(requestNexoApi).not.toHaveBeenCalled();
+      expect(state).toMatchObject({
+        status: "error",
+        message: "As alterações ainda não estão disponíveis nesta versão.",
+        submittedItemId: null,
+        nextItemId: null,
+      });
+    },
+  );
 
   it("preserva o formulário quando o título está vazio", async () => {
     const form = validForm();
@@ -73,6 +109,29 @@ describe("createTaskAction", () => {
     expect(requestNexoApi).not.toHaveBeenCalled();
   });
 
+  it("renova um UUID adulterado e permite tentar novamente", async () => {
+    const form = validForm();
+    form.set("itemId", "id-adulterado");
+
+    const invalidState = await createTaskAction(initialCreateTaskState, form);
+
+    expect(invalidState).toMatchObject({
+      status: "error",
+      message: "O formulário foi renovado. Revise os campos e tente novamente.",
+      nextItemId: null,
+    });
+    expect(invalidState.submittedItemId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(invalidState.submittedItemId).not.toBe("id-adulterado");
+    expect(requestNexoApi).not.toHaveBeenCalled();
+
+    form.set("itemId", invalidState.submittedItemId as string);
+    vi.mocked(requestNexoApi).mockResolvedValue({ created: true });
+    const retryState = await createTaskAction(invalidState, form);
+
+    expect(retryState.status).toBe("success");
+    expect(requestNexoApi).toHaveBeenCalledOnce();
+  });
+
   it("envia valores normalizados e revalida depois do sucesso", async () => {
     vi.mocked(requestNexoApi).mockResolvedValue({ created: true });
 
@@ -93,6 +152,21 @@ describe("createTaskAction", () => {
       "0f3ac9b0-5779-40ce-834d-40a8657684af",
     );
     expect(state.nextItemId).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("trata created=false como replay confirmado e gira o UUID", async () => {
+    vi.mocked(requestNexoApi).mockResolvedValue({ created: false });
+
+    const state = await createTaskAction(initialCreateTaskState, validForm());
+
+    expect(state).toMatchObject({
+      status: "success",
+      message: "Tarefa adicionada.",
+      submittedItemId: "0f3ac9b0-5779-40ce-834d-40a8657684af",
+    });
+    expect(state.nextItemId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(state.nextItemId).not.toBe(state.submittedItemId);
+    expect(revalidatePath.mock.calls).toEqual([["/tarefas"], ["/"]]);
   });
 
   it("traduz bloqueio de escrita sem perder o ID enviado", async () => {

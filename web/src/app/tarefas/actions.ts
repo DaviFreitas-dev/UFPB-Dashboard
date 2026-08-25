@@ -7,6 +7,9 @@ import * as z from "zod";
 
 import { requireAuthorizedSession } from "@/lib/auth-guard";
 import { NexoApiError, requestNexoApi } from "@/lib/nexo-api";
+import { mutationsUiEnabled } from "@/lib/write-policy";
+
+import type { CreateTaskState } from "./task-create-state";
 
 const CreateTaskSchema = z.object({
   itemId: z.uuid({ error: "O identificador do formulário é inválido." }),
@@ -23,46 +26,46 @@ const CreateTaskSchema = z.object({
   date: z.iso.date({ error: "Informe uma data válida." }),
 });
 
-export type CreateTaskState = {
-  status: "idle" | "error" | "success";
-  message: string;
-  fieldErrors: Partial<Record<"title" | "category" | "date", string[]>>;
-  submittedItemId: string | null;
-  nextItemId: string | null;
-};
-
-export const initialCreateTaskState: CreateTaskState = {
-  status: "idle",
-  message: "",
-  fieldErrors: {},
-  submittedItemId: null,
-  nextItemId: null,
-};
-
 export async function createTaskAction(
   _previous: CreateTaskState,
   formData: FormData,
 ): Promise<CreateTaskState> {
   await requireAuthorizedSession();
 
-  const parsed = CreateTaskSchema.safeParse({
+  if (!mutationsUiEnabled()) {
+    return {
+      status: "error",
+      message: "As alterações ainda não estão disponíveis nesta versão.",
+      fieldErrors: {},
+      submittedItemId: null,
+      nextItemId: null,
+    };
+  }
+
+  const rawFormData = {
     itemId: formData.get("itemId"),
     title: formData.get("title"),
     category: formData.get("category"),
     date: formData.get("date"),
-  });
+  };
+  const parsedItemId = z.uuid().safeParse(rawFormData.itemId);
+  const parsed = CreateTaskSchema.safeParse(rawFormData);
 
   if (!parsed.success) {
     const errors = z.flattenError(parsed.error).fieldErrors;
     return {
       status: "error",
-      message: "Revise os campos indicados.",
+      message: parsedItemId.success
+        ? "Revise os campos indicados."
+        : "O formulário foi renovado. Revise os campos e tente novamente.",
       fieldErrors: {
         title: errors.title,
         category: errors.category,
         date: errors.date,
       },
-      submittedItemId: String(formData.get("itemId") ?? "") || null,
+      submittedItemId: parsedItemId.success
+        ? parsedItemId.data
+        : randomUUID(),
       nextItemId: null,
     };
   }

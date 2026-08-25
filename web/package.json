@@ -9,11 +9,12 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && pnpm test:build-artifacts",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:build-artifacts": "node --test tests/server-action-build.check.mjs"
   },
   "dependencies": {
     "lucide-react": "1.33.0",

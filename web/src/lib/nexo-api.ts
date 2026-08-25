@@ -69,7 +69,13 @@ export async function requestNexoApi<T>(
       ...init.headers,
     },
   });
-  const payload: unknown = await response.json();
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    const problem = readApiProblem(null);
+    throw new NexoApiError(response.status, problem.code, problem.message);
+  }
 
   if (!response.ok) {
     const problem = readApiProblem(payload);

@@ -2,11 +2,11 @@
 
 import { useActionState, useEffect, useRef } from "react";
 
+import { createTaskAction } from "@/app/tarefas/actions";
 import {
-  createTaskAction,
   initialCreateTaskState,
   type CreateTaskState,
-} from "@/app/tarefas/actions";
+} from "@/app/tarefas/task-create-state";
 
 import styles from "./personal-workspace.module.css";
 

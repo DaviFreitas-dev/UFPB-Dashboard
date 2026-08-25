@@ -105,6 +105,40 @@ describe("requestNexoApi", () => {
     });
   });
 
+  it.each([
+    [502, "<html>segredo interno do proxy</html>", "text/html"],
+    [503, "segredo interno do upstream", "text/plain"],
+  ])(
+    "sanitiza uma resposta %i que não é JSON",
+    async (status, body, contentType) => {
+      process.env.NEXO_API_URL = "http://127.0.0.1:8000";
+      process.env.NEXO_API_TOKEN = "server-test";
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(body, {
+            status,
+            headers: { "Content-Type": contentType },
+          }),
+        ),
+      );
+
+      const error = await requestNexoApi("/v1/tasks", {
+        method: "POST",
+        body: "{}",
+      }).catch((reason: unknown) => reason);
+
+      expect(error).toBeInstanceOf(NexoApiError);
+      expect(error).toMatchObject({
+        status,
+        code: "unexpected_api_error",
+        message: "Não foi possível concluir a operação.",
+      });
+      expect(error).not.toBeInstanceOf(SyntaxError);
+      expect(String(error)).not.toContain(body);
+    },
+  );
+
   it("mantém token e JSON somente na chamada do servidor", async () => {
     process.env.NEXO_API_URL = "http://127.0.0.1:8000";
     process.env.NEXO_API_TOKEN = "server-test";
