@@ -1,3 +1,4 @@
+import json
 import logging
 from contextlib import contextmanager
 
@@ -19,6 +20,15 @@ PAYLOAD = {
     "category": "Estudo",
 }
 MALFORMED_JSON = b'{"id":'
+
+
+def structured_mutation_events(caplog):
+    return [
+        json.loads(record.getMessage())
+        for record in caplog.records
+        if record.name == task_mutations.__name__
+        and record.getMessage().startswith("{")
+    ]
 
 
 class FakeTaskWorksheet:
@@ -311,6 +321,67 @@ def test_task_creation_normalizes_then_locks_domain_and_clears_cache(monkeypatch
     ]
 
 
+@pytest.mark.parametrize(
+    ("created", "expected_outcome"),
+    [(True, "create"), (False, "replay")],
+)
+def test_task_creation_logs_one_safe_structured_success_event(
+    monkeypatch,
+    caplog,
+    created,
+    expected_outcome,
+):
+    """Removing a required audit field or logging task content must fail."""
+    enable_mutations(monkeypatch)
+    caplog.set_level(logging.INFO, logger=task_mutations.__name__)
+    monkeypatch.setattr(
+        task_mutations.tasks,
+        "add",
+        lambda title, category, target, item_id: ({
+            "id": item_id,
+            "data": str(target),
+            "tarefa": title,
+            "categoria": category,
+            "status": "Pendente",
+        }, created),
+    )
+    monkeypatch.setattr(task_mutations, "clear_dashboard_cache", lambda: None)
+
+    response = client.post("/v1/tasks", json=PAYLOAD, headers=HEADERS)
+
+    assert response.status_code == 200
+    events = structured_mutation_events(caplog)
+    assert len(events) == 1
+    event = events[0]
+    assert set(event) == {
+        "duration_ms",
+        "event",
+        "operation_id",
+        "outcome",
+        "request_id",
+        "route",
+        "status",
+        "task_uuid",
+        "timestamp",
+        "worksheet",
+    }
+    assert event["event"] == "nexo.task.mutation"
+    assert event["operation_id"] == "task-request-1"
+    assert event["outcome"] == expected_outcome
+    assert event["request_id"] == "task-request-1"
+    assert event["route"] == "/v1/tasks"
+    assert event["status"] == 200
+    assert event["task_uuid"] == PAYLOAD["id"]
+    assert event["worksheet"] == "Tarefas"
+    assert isinstance(event["duration_ms"], (int, float))
+    assert event["duration_ms"] >= 0
+    assert event["timestamp"].endswith("Z")
+    serialized = json.dumps(event, ensure_ascii=False)
+    assert PAYLOAD["title"] not in serialized
+    assert PAYLOAD["category"] not in serialized
+    assert HEADERS["X-Nexo-Token"] not in serialized
+
+
 def test_task_creation_rejects_empty_title_before_domain(monkeypatch):
     enable_mutations(monkeypatch)
     forbid_domain_call(monkeypatch)
@@ -458,8 +529,12 @@ def test_retry_after_dashboard_cache_failure_does_not_append_again(monkeypatch):
     assert dashboard_cache_attempts == [True, True]
 
 
-def test_task_creation_maps_id_conflict_without_leaking_content(monkeypatch):
+def test_task_creation_maps_id_conflict_without_leaking_content(
+    monkeypatch,
+    caplog,
+):
     enable_mutations(monkeypatch)
+    caplog.set_level(logging.INFO, logger=task_mutations.__name__)
     cache_clears = []
 
     def conflict(*_args, **_kwargs):
@@ -478,6 +553,16 @@ def test_task_creation_maps_id_conflict_without_leaking_content(monkeypatch):
     assert response.json()["error"]["operationId"] == "task-request-1"
     assert "conteúdo privado" not in response.text
     assert cache_clears == []
+    events = structured_mutation_events(caplog)
+    assert len(events) == 1
+    assert events[0]["outcome"] == "conflict"
+    assert events[0]["status"] == 409
+    assert events[0]["task_uuid"] == PAYLOAD["id"]
+    serialized = json.dumps(events[0], ensure_ascii=False)
+    assert PAYLOAD["title"] not in serialized
+    assert PAYLOAD["category"] not in serialized
+    assert HEADERS["X-Nexo-Token"] not in serialized
+    assert "conteúdo privado" not in serialized
 
 
 def test_task_creation_maps_internal_failure_without_leaking_details(
@@ -498,6 +583,16 @@ def test_task_creation_maps_internal_failure_without_leaking_details(
     assert response.json()["error"]["operationId"] == "task-request-1"
     assert "segredo interno da planilha" not in response.text
     assert "segredo interno da planilha" not in caplog.text
+    events = structured_mutation_events(caplog)
+    assert len(events) == 1
+    assert events[0]["outcome"] == "failure"
+    assert events[0]["status"] == 503
+    assert events[0]["task_uuid"] == PAYLOAD["id"]
+    serialized = json.dumps(events[0], ensure_ascii=False)
+    assert PAYLOAD["title"] not in serialized
+    assert PAYLOAD["category"] not in serialized
+    assert HEADERS["X-Nexo-Token"] not in serialized
+    assert "segredo interno da planilha" not in serialized
 
 
 def test_openapi_declares_one_post_with_real_request_and_error_schemas():

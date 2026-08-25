@@ -1,6 +1,7 @@
 import json
 import logging
-from datetime import date
+import time
+from datetime import date, datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
@@ -17,6 +18,41 @@ from modules import tasks
 
 
 logger = logging.getLogger(__name__)
+_MUTATION_ROUTE = "/v1/tasks"
+_TASK_WORKSHEET = "Tarefas"
+
+
+def _log_task_mutation(
+    request: Request,
+    task_uuid: UUID,
+    *,
+    outcome: str,
+    status_code: int,
+    started_at: float,
+) -> None:
+    operation_id = request.state.operation_id
+    event = {
+        "duration_ms": round((time.perf_counter() - started_at) * 1000, 3),
+        "event": "nexo.task.mutation",
+        "operation_id": operation_id,
+        "outcome": outcome,
+        "request_id": operation_id,
+        "route": _MUTATION_ROUTE,
+        "status": status_code,
+        "task_uuid": str(task_uuid),
+        "timestamp": datetime.now(timezone.utc)
+        .isoformat(timespec="milliseconds")
+        .replace("+00:00", "Z"),
+        "worksheet": _TASK_WORKSHEET,
+    }
+    level = (
+        logging.INFO
+        if outcome in {"create", "replay"}
+        else logging.WARNING
+        if outcome == "conflict"
+        else logging.ERROR
+    )
+    logger.log(level, json.dumps(event, ensure_ascii=False, sort_keys=True))
 
 
 class TaskMutationRoute(APIRoute):
@@ -164,6 +200,7 @@ def create_task(
     request: Request,
     payload: CreateTaskRequest = Depends(parse_create_task_request),
 ):
+    started_at = time.perf_counter()
     try:
         with mutation_lock():
             record, created = tasks.add(
@@ -187,18 +224,34 @@ def create_task(
             ),
         )
     except tasks.TaskIdConflict as error:
+        _log_task_mutation(
+            request,
+            payload.id,
+            outcome="conflict",
+            status_code=409,
+            started_at=started_at,
+        )
         raise NexoMutationError(
             409,
             "idempotency_conflict",
             "Esta operação já foi usada com outro conteúdo.",
         ) from error
-    except NexoMutationError:
+    except NexoMutationError as error:
+        _log_task_mutation(
+            request,
+            payload.id,
+            outcome="failure",
+            status_code=error.status_code,
+            started_at=started_at,
+        )
         raise
     except Exception as error:
-        logger.error(
-            "Falha ao criar tarefa. operation_id=%s error_type=%s",
-            request.state.operation_id,
-            type(error).__name__,
+        _log_task_mutation(
+            request,
+            payload.id,
+            outcome="failure",
+            status_code=503,
+            started_at=started_at,
         )
         raise NexoMutationError(
             503,
@@ -206,4 +259,11 @@ def create_task(
             "Não foi possível salvar a tarefa agora.",
         ) from error
 
+    _log_task_mutation(
+        request,
+        payload.id,
+        outcome="create" if response.created else "replay",
+        status_code=200,
+        started_at=started_at,
+    )
     return response
