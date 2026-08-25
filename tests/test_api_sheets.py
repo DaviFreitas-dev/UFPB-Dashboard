@@ -1,5 +1,6 @@
 from api import sheets
 from modules.config import SHEETS
+from modules.sheets_credentials import READ_ONLY_SCOPES
 
 
 class FakeWorkbook:
@@ -18,8 +19,8 @@ class FakeWorkbook:
 
 
 def test_api_uses_only_read_scopes():
-    assert sheets._READ_ONLY_SCOPES
-    assert all(scope.endswith(".readonly") for scope in sheets._READ_ONLY_SCOPES)
+    assert READ_ONLY_SCOPES
+    assert all(scope.endswith(".readonly") for scope in READ_ONLY_SCOPES)
 
 
 def test_workspace_sheets_share_the_same_batch():

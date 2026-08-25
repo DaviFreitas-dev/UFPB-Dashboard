@@ -1,6 +1,117 @@
 import "server-only";
 
+import type { ZodType } from "zod";
+
+import { requireAuthorizedSession } from "@/lib/auth-guard";
+
+type ApiProblem = { code: string; message: string; operationId?: string };
+const AMBIGUOUS_API_MESSAGE = "Não foi possível confirmar a resposta da API.";
+
+export class NexoApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string,
+    readonly operationId?: string,
+  ) {
+    super(message);
+    this.name = "NexoApiError";
+  }
+}
+
+function readApiProblem(payload: unknown): ApiProblem {
+  if (!payload || typeof payload !== "object" || !("error" in payload)) {
+    return {
+      code: "unexpected_api_error",
+      message: "Não foi possível concluir a operação.",
+    };
+  }
+  const error = payload.error;
+  if (!error || typeof error !== "object") {
+    return {
+      code: "unexpected_api_error",
+      message: "Não foi possível concluir a operação.",
+    };
+  }
+  const errorRecord = error as Record<string, unknown>;
+  return {
+    code:
+      typeof errorRecord.code === "string"
+        ? errorRecord.code
+        : "unexpected_api_error",
+    message:
+      typeof errorRecord.message === "string"
+        ? errorRecord.message
+        : "Não foi possível concluir a operação.",
+    operationId:
+      typeof errorRecord.operationId === "string"
+        ? errorRecord.operationId
+        : undefined,
+  };
+}
+
+export async function requestNexoApi<T>(
+  path: string,
+  init: RequestInit,
+  responseSchema: ZodType<T>,
+): Promise<T> {
+  await requireAuthorizedSession();
+
+  const baseUrl = process.env.NEXO_API_URL?.replace(/\/$/, "");
+  const apiToken = process.env.NEXO_API_TOKEN;
+  if (!baseUrl || !apiToken) {
+    throw new Error("A comunicação segura do NEXO não foi configurada.");
+  }
+
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...init,
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-Nexo-Token": apiToken,
+      ...init.headers,
+    },
+  });
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    if (response.ok) {
+      throw new NexoApiError(
+        response.status,
+        "ambiguous_api_response",
+        AMBIGUOUS_API_MESSAGE,
+      );
+    }
+    const problem = readApiProblem(null);
+    throw new NexoApiError(response.status, problem.code, problem.message);
+  }
+
+  if (!response.ok) {
+    const problem = readApiProblem(payload);
+    throw new NexoApiError(
+      response.status,
+      problem.code,
+      problem.message,
+      problem.operationId,
+    );
+  }
+
+  const parsed = responseSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new NexoApiError(
+      response.status,
+      "ambiguous_api_response",
+      AMBIGUOUS_API_MESSAGE,
+    );
+  }
+  return parsed.data;
+}
+
 export async function fetchNexoApi(path: string): Promise<unknown | null> {
+  await requireAuthorizedSession();
+
   const baseUrl = process.env.NEXO_API_URL?.replace(/\/$/, "");
   if (!baseUrl) {
     return null;

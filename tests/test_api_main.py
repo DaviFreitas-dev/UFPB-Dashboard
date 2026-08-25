@@ -52,6 +52,16 @@ def test_health_does_not_require_credentials():
     assert response.json() == {"service": "nexo-api", "status": "ok"}
 
 
+def test_health_returns_the_request_operation_id():
+    response = client.get(
+        "/health",
+        headers={"X-Request-ID": "health-request-1"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["X-Request-ID"] == "health-request-1"
+
+
 def test_dashboard_requires_server_token(monkeypatch):
     monkeypatch.delenv("NEXO_API_TOKEN", raising=False)
 

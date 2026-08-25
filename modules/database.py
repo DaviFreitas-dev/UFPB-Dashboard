@@ -1,15 +1,24 @@
+import copy
 import json
 import re
+import threading
+import time
 import uuid
 from datetime import date
+from functools import lru_cache
 
 import gspread
-import streamlit as st
 from google.oauth2.service_account import Credentials
 from gspread.http_client import BackOffHTTPClient
-from gspread.utils import numericise_all, to_records
+from gspread.utils import to_records
 
 from modules.config import CICLO_PADRAO, SHEETS, XP_POR_HORA
+from modules.sheets_credentials import READ_WRITE_SCOPES, load_service_account_info
+
+
+_CACHE_SECONDS = 15
+_RECORDS_CACHE_LOCK = threading.RLock()
+_RECORDS_CACHE = {}
 
 
 class SheetSchemaError(RuntimeError):
@@ -19,41 +28,43 @@ class SheetSchemaError(RuntimeError):
 _HEADER_NOT_PROVIDED = object()
 
 
-@st.cache_resource
+@lru_cache(maxsize=1)
 def connect_sheet():
-    scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive",
-    ]
     creds = Credentials.from_service_account_info(
-        dict(st.secrets["gsheets"]),
-        scopes=scopes,
+        load_service_account_info(),
+        scopes=READ_WRITE_SCOPES,
     )
     client = gspread.authorize(creds, http_client=BackOffHTTPClient)
     return client.open("Banco_UFPB")
 
 
-@st.cache_resource
+@lru_cache(maxsize=1)
 def _worksheets_by_name():
     return {ws.title: ws for ws in connect_sheet().worksheets()}
 
 
-@st.cache_resource
 def get_worksheet(name):
-    worksheets = _worksheets_by_name()
-    ws = worksheets.get(name)
+    with _RECORDS_CACHE_LOCK:
+        worksheets = _worksheets_by_name()
+        ws = worksheets.get(name)
 
-    if ws is None:
-        book = connect_sheet()
-        ws = book.add_worksheet(
-            title=name,
-            rows=1000,
-            cols=max(10, len(SHEETS[name]) + 2),
-        )
-        ws.update([SHEETS[name]])
-        worksheets[name] = ws
+        if ws is None:
+            book = connect_sheet()
+            ws = book.add_worksheet(
+                title=name,
+                rows=1000,
+                cols=max(10, len(SHEETS[name]) + 2),
+            )
+            ws.update([SHEETS[name]])
+            worksheets[name] = ws
 
     return ws
+
+
+def get_existing_worksheet(name):
+    """Retorna uma aba existente sem criar schema quando ela está ausente."""
+    with _RECORDS_CACHE_LOCK:
+        return _worksheets_by_name().get(name)
 
 
 def _ensure_header(name, ws, current=_HEADER_NOT_PROVIDED):
@@ -104,8 +115,7 @@ def _read_headers(book, names):
     return headers
 
 
-@st.cache_data(ttl=15, show_spinner=False)
-def _records_cached(name):
+def _read_records(name):
     ws = get_worksheet(name)
     entire_sheet = ws.get(pad_values=True)
 
@@ -117,21 +127,29 @@ def _records_cached(name):
     if not entire_sheet:
         return []
 
-    values = [
-        numericise_all(row, False, "", False, [])
-        for row in entire_sheet[1:]
-    ]
-    return to_records(current, values)
+    return to_records(current, entire_sheet[1:])
+
+
+def _records_cached(name):
+    now = time.monotonic()
+    with _RECORDS_CACHE_LOCK:
+        cached = _RECORDS_CACHE.get(name)
+        if cached and now < cached[0]:
+            return copy.deepcopy(cached[1])
+        rows = _read_records(name)
+        _RECORDS_CACHE[name] = (now + _CACHE_SECONDS, copy.deepcopy(rows))
+        return copy.deepcopy(rows)
 
 
 def clear_records_cache(name=None):
-    if name is None:
-        _records_cached.clear()
-    else:
-        _records_cached.clear(name)
+    with _RECORDS_CACHE_LOCK:
+        if name is None:
+            _RECORDS_CACHE.clear()
+        else:
+            _RECORDS_CACHE.pop(name, None)
 
 
-@st.cache_resource
+@lru_cache(maxsize=1)
 def initialize_database():
     names = list(SHEETS)
     worksheets = {name: get_worksheet(name) for name in names}
@@ -146,12 +164,15 @@ def initialize_database():
     return True
 
 
+def clear_resource_caches():
+    clear_records_cache()
+    _worksheets_by_name.cache_clear()
+    connect_sheet.cache_clear()
+    initialize_database.cache_clear()
+
+
 def records(name):
-    try:
-        return [dict(row) for row in _records_cached(name)]
-    except gspread.exceptions.APIError as error:
-        st.error(f"Erro ao acessar a aba '{name}' do Google Sheets.")
-        raise error
+    return [dict(row) for row in _records_cached(name)]
 
 
 def replace_records(name, rows):
@@ -165,12 +186,15 @@ def replace_records(name, rows):
     clear_records_cache(name)
 
 
-def append_record(name, values):
-    get_worksheet(name).append_row(
-        values,
-        value_input_option="USER_ENTERED",
-    )
+def append_record(name, values, value_input_option="USER_ENTERED"):
     clear_records_cache(name)
+    try:
+        get_worksheet(name).append_row(
+            values,
+            value_input_option=value_input_option,
+        )
+    finally:
+        clear_records_cache(name)
 
 
 def write_values_batch(updates):

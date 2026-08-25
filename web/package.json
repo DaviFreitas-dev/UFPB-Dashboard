@@ -9,18 +9,21 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && pnpm test:build-artifacts",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:build-artifacts": "node --test tests/server-action-build.check.mjs"
   },
   "dependencies": {
     "lucide-react": "1.33.0",
     "next": "16.3.2",
+    "next-auth": "5.0.0-beta.32",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "server-only": "0.0.1"
+    "server-only": "0.0.1",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",

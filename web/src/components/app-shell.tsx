@@ -10,6 +10,7 @@ import {
   CircleGauge,
   Dumbbell,
   ListTodo,
+  LogOut,
   NotebookTabs,
   Settings,
   Sparkles,
@@ -17,6 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { signOut } from "@/auth";
 import type { DashboardUser } from "@/lib/dashboard";
 import { ratio } from "@/lib/dashboard";
 import styles from "./app-shell.module.css";
@@ -69,6 +71,10 @@ type AppShellProps = {
 
 export function AppShell({ children, currentPath, user }: AppShellProps) {
   const levelProgress = ratio(user.xpInLevel, user.xpPerLevel);
+  async function handleSignOut() {
+    "use server";
+    await signOut({ redirectTo: "/entrar" });
+  }
 
   return (
     <div className={styles.shell}>
@@ -107,6 +113,12 @@ export function AppShell({ children, currentPath, user }: AppShellProps) {
             );
           })}
         </nav>
+
+        <form action={handleSignOut} className={styles.signOutForm}>
+          <button className={styles.signOutButton} type="submit">
+            Sair
+          </button>
+        </form>
       </aside>
 
       <main className={styles.main}>{children}</main>
@@ -138,6 +150,12 @@ export function AppShell({ children, currentPath, user }: AppShellProps) {
           <Settings aria-hidden="true" size={20} strokeWidth={1.8} />
           <span>Mais</span>
         </Link>
+        <form action={handleSignOut} className={styles.mobileSignOutForm}>
+          <button className={styles.mobileItem} type="submit">
+            <LogOut aria-hidden="true" size={20} strokeWidth={1.8} />
+            <span>Sair</span>
+          </button>
+        </form>
       </nav>
     </div>
   );

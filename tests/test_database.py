@@ -1,4 +1,5 @@
 from datetime import date
+from pathlib import Path
 
 import pytest
 
@@ -40,6 +41,26 @@ def test_matching_header_is_left_untouched():
 
     assert worksheet.updates == []
     assert worksheet.insertions == []
+
+
+def test_existing_worksheet_lookup_does_not_create_a_missing_schema(monkeypatch):
+    creation_attempts = []
+
+    class FakeBook:
+        def worksheets(self):
+            return []
+
+        def add_worksheet(self, **_kwargs):
+            creation_attempts.append(_kwargs)
+            raise AssertionError("read-only lookup must not create a worksheet")
+
+    database._worksheets_by_name.cache_clear()
+    monkeypatch.setattr(database, "connect_sheet", lambda: FakeBook())
+
+    assert database.get_existing_worksheet("Tarefas") is None
+    assert creation_attempts == []
+
+    database._worksheets_by_name.cache_clear()
 
 
 def test_legacy_header_is_not_shifted_or_rewritten():
@@ -105,7 +126,7 @@ def test_records_use_one_sheet_read_and_validate_its_header(monkeypatch):
 
     worksheet = ReadWorksheet()
     monkeypatch.setattr(database, "get_worksheet", lambda _name: worksheet)
-    database._records_cached.clear()
+    database.clear_records_cache()
 
     result = database._records_cached("Atividade")
 
@@ -119,7 +140,90 @@ def test_records_use_one_sheet_read_and_validate_its_header(monkeypatch):
     ]
     assert worksheet.get_calls == [{"pad_values": True}]
     assert worksheet.updates == []
-    database._records_cached.clear()
+    database.clear_records_cache()
+
+
+def test_records_preserve_numeric_looking_task_text(monkeypatch):
+    class ReadWorksheet:
+        def get(self, **kwargs):
+            assert kwargs == {"pad_values": True}
+            return [
+                SHEETS["Tarefas"],
+                ["task-001", "2026-08-23", "001", "Estudo", "Pendente"],
+            ]
+
+    monkeypatch.setattr(database, "get_worksheet", lambda _name: ReadWorksheet())
+
+    result = database._read_records("Tarefas")
+
+    assert result[0]["tarefa"] == "001"
+
+
+def test_records_cache_reuses_rows_until_cleared(monkeypatch):
+    reads = []
+
+    class ReadWorksheet:
+        def get(self, **kwargs):
+            reads.append(kwargs)
+            return [
+                SHEETS["Tarefas"],
+                ["task-1", "2026-08-23", "Revisar", "Estudo", "Pendente"],
+            ]
+
+    monkeypatch.setattr(database, "get_worksheet", lambda _name: ReadWorksheet())
+    database.clear_records_cache()
+
+    first = database.records("Tarefas")
+    first[0]["tarefa"] = "mudança local"
+    second = database.records("Tarefas")
+
+    assert second[0]["tarefa"] == "Revisar"
+    assert len(reads) == 1
+    database.clear_records_cache()
+
+
+def test_database_module_has_no_top_level_streamlit_dependency():
+    source = Path(database.__file__).read_text(encoding="utf-8")
+
+    assert "import streamlit as st" not in source
+    assert "@st.cache_" not in source
+
+
+def test_clear_resource_caches_resets_connection_worksheet_and_records_caches(
+    monkeypatch,
+):
+    class FakeBook:
+        def worksheets(self):
+            return []
+
+    class FakeClient:
+        def open(self, _name):
+            return FakeBook()
+
+    database.connect_sheet.cache_clear()
+    database._worksheets_by_name.cache_clear()
+    database.clear_records_cache()
+    monkeypatch.setattr(
+        database.Credentials,
+        "from_service_account_info",
+        lambda *_args, **_kwargs: object(),
+    )
+    monkeypatch.setattr(
+        database.gspread,
+        "authorize",
+        lambda *_args, **_kwargs: FakeClient(),
+    )
+    monkeypatch.setattr(database, "load_service_account_info", lambda: {})
+
+    database.connect_sheet()
+    database._worksheets_by_name()
+    database._RECORDS_CACHE["Tarefas"] = (float("inf"), [])
+
+    database.clear_resource_caches()
+
+    assert database.connect_sheet.cache_info().currsize == 0
+    assert database._worksheets_by_name.cache_info().currsize == 0
+    assert database._RECORDS_CACHE == {}
 
 
 def test_batch_writer_uses_one_request_and_clears_targeted_caches(monkeypatch):
