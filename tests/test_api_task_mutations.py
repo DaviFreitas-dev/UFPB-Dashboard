@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import api.task_mutations as task_mutations
+import api.mutation_audit as mutation_audit
 from api.main import app
 from modules import database
 from modules.config import SHEETS
@@ -26,7 +27,7 @@ def structured_mutation_events(caplog):
     return [
         json.loads(record.getMessage())
         for record in caplog.records
-        if record.name == task_mutations.__name__
+        if record.name == mutation_audit.__name__
         and record.getMessage().startswith("{")
     ]
 
@@ -333,7 +334,7 @@ def test_task_creation_logs_one_safe_structured_success_event(
 ):
     """Removing a required audit field or logging task content must fail."""
     enable_mutations(monkeypatch)
-    caplog.set_level(logging.INFO, logger=task_mutations.__name__)
+    caplog.set_level(logging.INFO, logger=mutation_audit.__name__)
     monkeypatch.setattr(
         task_mutations.tasks,
         "add",
@@ -361,9 +362,9 @@ def test_task_creation_logs_one_safe_structured_success_event(
         "request_id",
         "route",
         "status",
-        "task_uuid",
+        "resource_id",
         "timestamp",
-        "worksheet",
+        "worksheets",
     }
     assert event["event"] == "nexo.task.mutation"
     assert event["operation_id"] == "task-request-1"
@@ -371,8 +372,8 @@ def test_task_creation_logs_one_safe_structured_success_event(
     assert event["request_id"] == "task-request-1"
     assert event["route"] == "/v1/tasks"
     assert event["status"] == 200
-    assert event["task_uuid"] == PAYLOAD["id"]
-    assert event["worksheet"] == "Tarefas"
+    assert event["resource_id"] == PAYLOAD["id"]
+    assert event["worksheets"] == ["Tarefas"]
     assert isinstance(event["duration_ms"], (int, float))
     assert event["duration_ms"] >= 0
     assert event["timestamp"].endswith("Z")
@@ -534,7 +535,7 @@ def test_task_creation_maps_id_conflict_without_leaking_content(
     caplog,
 ):
     enable_mutations(monkeypatch)
-    caplog.set_level(logging.INFO, logger=task_mutations.__name__)
+    caplog.set_level(logging.INFO, logger=mutation_audit.__name__)
     cache_clears = []
 
     def conflict(*_args, **_kwargs):
@@ -557,7 +558,7 @@ def test_task_creation_maps_id_conflict_without_leaking_content(
     assert len(events) == 1
     assert events[0]["outcome"] == "conflict"
     assert events[0]["status"] == 409
-    assert events[0]["task_uuid"] == PAYLOAD["id"]
+    assert events[0]["resource_id"] == PAYLOAD["id"]
     serialized = json.dumps(events[0], ensure_ascii=False)
     assert PAYLOAD["title"] not in serialized
     assert PAYLOAD["category"] not in serialized
@@ -570,7 +571,7 @@ def test_task_creation_maps_internal_failure_without_leaking_details(
     caplog,
 ):
     enable_mutations(monkeypatch)
-    caplog.set_level(logging.ERROR, logger=task_mutations.__name__)
+    caplog.set_level(logging.ERROR, logger=mutation_audit.__name__)
 
     def fail(*_args, **_kwargs):
         raise RuntimeError("segredo interno da planilha")
@@ -587,7 +588,7 @@ def test_task_creation_maps_internal_failure_without_leaking_details(
     assert len(events) == 1
     assert events[0]["outcome"] == "failure"
     assert events[0]["status"] == 503
-    assert events[0]["task_uuid"] == PAYLOAD["id"]
+    assert events[0]["resource_id"] == PAYLOAD["id"]
     serialized = json.dumps(events[0], ensure_ascii=False)
     assert PAYLOAD["title"] not in serialized
     assert PAYLOAD["category"] not in serialized
