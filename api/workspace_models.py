@@ -95,10 +95,14 @@ class StudyWorkspace(ApiModel):
     progress: ProgressSnapshot
 
 
+class PersonalTask(Task):
+    mutable: bool
+
+
 class TaskCollection(ApiModel):
     total: int
     completed: int
-    items: list[Task]
+    items: list[PersonalTask]
 
 
 class PersonalHabit(ApiModel):

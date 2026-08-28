@@ -5,6 +5,7 @@ export type PersonalTask = {
   title: string;
   category: string;
   completed: boolean;
+  mutable: boolean;
 };
 
 export type PersonalHabit = {
@@ -75,7 +76,8 @@ function isPersonalTask(value: unknown): value is PersonalTask {
     isString(value.id) &&
     isString(value.title) &&
     isString(value.category) &&
-    isBoolean(value.completed)
+    isBoolean(value.completed) &&
+    isBoolean(value.mutable)
   );
 }
 

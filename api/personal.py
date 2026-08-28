@@ -11,12 +11,12 @@ from api.dashboard import (
     _today,
     _user,
 )
-from api.models import Task
 from api.sheets import read_dashboard_tables
 from api.workspace_models import (
     ActivityCollection,
     HabitCollection,
     PersonalHabit,
+    PersonalTask,
     PersonalWorkspace,
     PhysicalActivity,
     ReadingBook,
@@ -30,12 +30,14 @@ def _tasks(tables, reference):
     for index, row in enumerate(_rows(tables, "Tarefas")):
         if _date(row.get("data")) != reference:
             continue
+        persisted_id = _text(row.get("id"))
         items.append(
-            Task(
-                id=_row_id(row, "task", index),
+            PersonalTask(
+                id=persisted_id or _row_id(row, "task", index),
                 title=_text(row.get("tarefa"), "Tarefa sem título"),
                 category=_text(row.get("categoria"), "Outro"),
                 completed=_completed(row.get("status")),
+                mutable=bool(persisted_id),
             )
         )
     return TaskCollection(

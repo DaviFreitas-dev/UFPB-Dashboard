@@ -19,6 +19,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    globals: true,
     server: {
       deps: {
         inline: [/next-auth/],

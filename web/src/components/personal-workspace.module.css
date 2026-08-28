@@ -147,7 +147,7 @@
 .itemDone {
   min-height: 76px;
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto;
+  grid-template-columns: 30px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 13px;
   padding: 14px 18px;
@@ -222,6 +222,43 @@
 .createForm small { color: #d99a9a; }
 .formMessage { grid-column: 1 / -1; min-height: 1rem; margin: 0; color: var(--color-muted); font-size: 0.64rem; }
 
+.taskControls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.taskControls form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.taskControls button {
+  min-height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
+  font-size: 0.58rem;
+  font-weight: 650;
+}
+.taskControls button:hover { border-color: #4b5565; color: var(--color-text); }
+.taskControls button:focus-visible { outline: 2px solid var(--color-accent-soft); outline-offset: 2px; }
+.taskControls button:disabled { cursor: wait; opacity: 0.58; }
+.deleteConfirmation { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.deleteConfirmation span { color: #d8a6a6; font-size: 0.6rem; }
+.inlineMutationMessage {
+  flex-basis: 100%;
+  min-height: 0.8rem;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.58rem;
+  text-align: right;
+}
+
 .readingGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .bookCard { min-height: 204px; display: flex; flex-direction: column; padding: 19px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
 .bookTopline { display: flex; align-items: center; justify-content: space-between; min-height: 20px; color: var(--color-accent-soft); }
@@ -256,6 +293,8 @@
   .item > .openPill,
   .itemDone > .donePill,
   .itemDone > .openPill { grid-column: 2; justify-self: start; }
+  .taskControls { grid-column: 2; justify-content: flex-start; }
+  .inlineMutationMessage { text-align: left; }
   .readingGrid { grid-template-columns: 1fr; }
   .bookMeta { flex-direction: column; gap: 4px; }
   .createForm { grid-template-columns: 1fr; }

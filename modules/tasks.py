@@ -14,6 +14,20 @@ class TaskIdConflict(ValueError):
     pass
 
 
+def _record_with_id(item_id):
+    requested_id = str(item_id).strip()
+    if not requested_id:
+        return None
+    return next(
+        (
+            row
+            for row in records("Tarefas")
+            if str(row.get("id") or "").strip() == requested_id
+        ),
+        None,
+    )
+
+
 def records_for_date(target_date):
     target = str(target_date)
     return [
@@ -71,21 +85,35 @@ def add(task, category, target_date=None, item_id=None):
     return expected, True
 
 
-def toggle(item_id, done):
-    updated = update_record(
-        "Tarefas",
-        item_id,
-        {"status": "Concluída" if done else "Pendente"},
-    )
+def set_completed(item_id, completed):
+    current = _record_with_id(item_id)
+    if current is None:
+        return None, False
 
-    if updated and done:
+    target = "Concluída" if completed else "Pendente"
+    if current.get("status") == target:
+        return {**current, "status": target}, False
+
+    if not update_record("Tarefas", item_id, {"status": target}):
+        return None, False
+
+    confirmed = {**current, "status": target}
+    if completed:
         award_xp_once(
             f"task:{item_id}",
             15,
             "tarefa",
             "Tarefa concluída",
         )
+    return confirmed, True
+
+
+def toggle(item_id, done):
+    return set_completed(item_id, done)
 
 
 def remove(item_id):
-    return delete_record("Tarefas", item_id)
+    current = _record_with_id(item_id)
+    if current is None:
+        return False
+    return delete_record("Tarefas", current["id"])

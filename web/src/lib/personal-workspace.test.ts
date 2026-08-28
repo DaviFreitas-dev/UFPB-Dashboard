@@ -17,7 +17,13 @@ const workspace = {
     total: 2,
     completed: 1,
     items: [
-      { id: "task-1", title: "Revisar funções", category: "Estudos", completed: true },
+      {
+        id: "task-1",
+        title: "Revisar funções",
+        category: "Estudos",
+        completed: true,
+        mutable: true,
+      },
     ],
   },
   habits: {
@@ -65,6 +71,18 @@ describe("personal workspace contract", () => {
         habits: {
           ...workspace.habits,
           items: [{ ...workspace.habits.items[0], logId: undefined }],
+        },
+      }),
+    ).toBe(false);
+  });
+
+  it("recusa uma tarefa sem indicação explícita de mutabilidade", () => {
+    expect(
+      isPersonalWorkspace({
+        ...workspace,
+        tasks: {
+          ...workspace.tasks,
+          items: [{ ...workspace.tasks.items[0], mutable: undefined }],
         },
       }),
     ).toBe(false);

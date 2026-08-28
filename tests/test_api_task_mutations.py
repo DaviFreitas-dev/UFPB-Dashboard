@@ -596,6 +596,309 @@ def test_task_creation_maps_internal_failure_without_leaking_details(
     assert "segredo interno da planilha" not in serialized
 
 
+def task_record(status="Pendente"):
+    return {
+        "id": "task-1",
+        "data": "2026-08-23",
+        "tarefa": "Revisar matemática",
+        "categoria": "Estudo",
+        "status": status,
+    }
+
+
+def forbid_task_lifecycle_domain_calls(monkeypatch):
+    monkeypatch.setattr(
+        task_mutations.tasks,
+        "set_completed",
+        lambda *_args: pytest.fail("request must not update a task"),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        task_mutations.tasks,
+        "remove",
+        lambda *_args: pytest.fail("request must not delete a task"),
+    )
+
+
+@pytest.mark.parametrize("method", ["patch", "delete"])
+def test_task_lifecycle_requires_token_before_write_gate(monkeypatch, method):
+    monkeypatch.setenv("NEXO_API_TOKEN", "server-test")
+    monkeypatch.delenv("NEXO_API_WRITES_ENABLED", raising=False)
+    forbid_task_lifecycle_domain_calls(monkeypatch)
+
+    response = client.request(
+        method.upper(),
+        "/v1/tasks/task-1",
+        json={"completed": True} if method == "patch" else None,
+        headers={"X-Request-ID": "task-request-1"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "invalid_token"
+    assert response.json()["error"]["operationId"] == "task-request-1"
+
+
+def test_task_patch_checks_write_gate_before_body_validation(monkeypatch):
+    monkeypatch.setenv("NEXO_API_TOKEN", "server-test")
+    monkeypatch.delenv("NEXO_API_WRITES_ENABLED", raising=False)
+    forbid_task_lifecycle_domain_calls(monkeypatch)
+
+    response = client.patch(
+        "/v1/tasks/task-1",
+        content=MALFORMED_JSON,
+        headers={**HEADERS, "Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "writes_disabled"
+
+
+@pytest.mark.parametrize("completed", ["true", "false", 1, 0, None])
+def test_task_patch_requires_a_json_boolean_after_guards(monkeypatch, completed):
+    enable_mutations(monkeypatch)
+    forbid_task_lifecycle_domain_calls(monkeypatch)
+
+    response = client.patch(
+        "/v1/tasks/task-1",
+        json={"completed": completed},
+        headers=HEADERS,
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_request"
+
+
+def test_task_patch_locks_domain_and_clears_cache_after_confirmation(monkeypatch):
+    enable_mutations(monkeypatch)
+    events = []
+
+    @contextmanager
+    def tracked_lock():
+        events.append("lock-enter")
+        try:
+            yield
+        finally:
+            events.append("lock-exit")
+
+    def set_completed(item_id, completed):
+        assert events == ["lock-enter"]
+        events.append(("set-completed", item_id, completed))
+        return task_record("Concluída"), True
+
+    monkeypatch.setattr(task_mutations, "mutation_lock", tracked_lock)
+    monkeypatch.setattr(
+        task_mutations.tasks,
+        "set_completed",
+        set_completed,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        task_mutations,
+        "clear_dashboard_cache",
+        lambda: events.append("cache-clear"),
+    )
+
+    response = client.patch(
+        "/v1/tasks/task-1",
+        json={"completed": True},
+        headers=HEADERS,
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "operationId": "task-request-1",
+        "changed": True,
+        "task": {
+            "id": "task-1",
+            "date": "2026-08-23",
+            "title": "Revisar matemática",
+            "category": "Estudo",
+            "completed": True,
+        },
+    }
+    assert events == [
+        "lock-enter",
+        ("set-completed", "task-1", True),
+        "lock-exit",
+        "cache-clear",
+    ]
+
+
+def test_task_patch_returns_record_not_found_without_clearing_cache(monkeypatch):
+    enable_mutations(monkeypatch)
+    monkeypatch.setattr(
+        task_mutations.tasks,
+        "set_completed",
+        lambda _item_id, _completed: (None, False),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        task_mutations,
+        "clear_dashboard_cache",
+        lambda: pytest.fail("missing records must not clear cache"),
+    )
+
+    response = client.patch(
+        "/v1/tasks/task-1",
+        json={"completed": True},
+        headers=HEADERS,
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"] == {
+        "code": "record_not_found",
+        "message": "A tarefa não foi encontrada.",
+        "operationId": "task-request-1",
+    }
+
+
+def test_task_patch_confirms_replay_and_clears_cache(monkeypatch):
+    enable_mutations(monkeypatch)
+    cache_clears = []
+    monkeypatch.setattr(
+        task_mutations.tasks,
+        "set_completed",
+        lambda _item_id, _completed: (task_record("Concluída"), False),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        task_mutations,
+        "clear_dashboard_cache",
+        lambda: cache_clears.append(True),
+    )
+
+    response = client.patch(
+        "/v1/tasks/task-1",
+        json={"completed": True},
+        headers=HEADERS,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["changed"] is False
+    assert response.json()["task"]["completed"] is True
+    assert cache_clears == [True]
+
+
+def test_task_delete_is_repeatable_and_clears_cache_after_each_confirmation(
+    monkeypatch,
+):
+    enable_mutations(monkeypatch)
+    results = iter([True, False])
+    cache_clears = []
+    monkeypatch.setattr(task_mutations.tasks, "remove", lambda _item_id: next(results))
+    monkeypatch.setattr(
+        task_mutations,
+        "clear_dashboard_cache",
+        lambda: cache_clears.append(True),
+    )
+
+    first = client.delete("/v1/tasks/task-1", headers=HEADERS)
+    replay = client.delete("/v1/tasks/task-1", headers=HEADERS)
+
+    assert first.status_code == 200
+    assert first.json() == {
+        "operationId": "task-request-1",
+        "id": "task-1",
+        "deleted": True,
+    }
+    assert replay.status_code == 200
+    assert replay.json() == {
+        "operationId": "task-request-1",
+        "id": "task-1",
+        "deleted": False,
+    }
+    assert cache_clears == [True, True]
+
+
+def test_task_lifecycle_logs_safe_success_events(monkeypatch, caplog):
+    enable_mutations(monkeypatch)
+    caplog.set_level(logging.INFO, logger=mutation_audit.__name__)
+    monkeypatch.setattr(
+        task_mutations.tasks,
+        "set_completed",
+        lambda _item_id, _completed: (task_record("Concluída"), False),
+        raising=False,
+    )
+    monkeypatch.setattr(task_mutations.tasks, "remove", lambda _item_id: False)
+    monkeypatch.setattr(task_mutations, "clear_dashboard_cache", lambda: None)
+
+    patch_response = client.patch(
+        "/v1/tasks/task-1",
+        json={"completed": True},
+        headers=HEADERS,
+    )
+    delete_response = client.delete("/v1/tasks/task-1", headers=HEADERS)
+
+    assert patch_response.status_code == 200
+    assert delete_response.status_code == 200
+    events = structured_mutation_events(caplog)
+    assert [event["outcome"] for event in events] == ["replay", "replay"]
+    assert [event["route"] for event in events] == [
+        "/v1/tasks/{task_id}",
+        "/v1/tasks/{task_id}",
+    ]
+    assert all(event["resource_id"] == "task-1" for event in events)
+    serialized = json.dumps(events, ensure_ascii=False)
+    assert "Revisar matemática" not in serialized
+    assert HEADERS["X-Nexo-Token"] not in serialized
+
+
+@pytest.mark.parametrize(
+    ("method", "domain_name", "json_body"),
+    [("patch", "set_completed", {"completed": True}), ("delete", "remove", None)],
+)
+def test_task_lifecycle_hides_internal_failures(
+    monkeypatch,
+    caplog,
+    method,
+    domain_name,
+    json_body,
+):
+    enable_mutations(monkeypatch)
+    caplog.set_level(logging.ERROR, logger=mutation_audit.__name__)
+
+    def fail(*_args):
+        raise RuntimeError("segredo interno da planilha")
+
+    monkeypatch.setattr(
+        task_mutations.tasks,
+        domain_name,
+        fail,
+        raising=False,
+    )
+
+    response = client.request(
+        method.upper(),
+        "/v1/tasks/task-1",
+        json=json_body,
+        headers=HEADERS,
+    )
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "write_failed"
+    assert "segredo interno da planilha" not in response.text
+    assert "segredo interno da planilha" not in caplog.text
+    assert structured_mutation_events(caplog)[-1]["outcome"] == "failure"
+
+
+def test_openapi_declares_task_patch_and_delete_contracts():
+    task_operations = app.openapi()["paths"]["/v1/tasks/{task_id}"]
+
+    assert set(task_operations) == {"patch", "delete"}
+    patch = task_operations["patch"]
+    request_schema = patch["requestBody"]["content"]["application/json"][
+        "schema"
+    ]
+    assert request_schema["type"] == "object"
+    assert request_schema["required"] == ["completed"]
+    assert request_schema["properties"]["completed"]["type"] == "boolean"
+    for operation in task_operations.values():
+        assert operation["responses"]["422"]["content"]["application/json"][
+            "schema"
+        ] == {"$ref": "#/components/schemas/MutationErrorResponse"}
+        assert "HTTPValidationError" not in str(operation)
+
+
 def test_openapi_declares_one_post_with_real_request_and_error_schemas():
     task_operations = app.openapi()["paths"]["/v1/tasks"]
 

@@ -2,11 +2,11 @@
 
 import { useActionState, useEffect, useRef } from "react";
 
-import { createTaskAction } from "@/app/tarefas/actions";
+import { createTaskAction } from "@/actions/tasks";
 import {
-  initialCreateTaskState,
-  type CreateTaskState,
-} from "@/app/tarefas/task-create-state";
+  initialCreateMutationState,
+  type CreateMutationState,
+} from "@/actions/mutation-state";
 
 import styles from "./personal-workspace.module.css";
 
@@ -17,7 +17,7 @@ type TaskCreateFormProps = {
 
 export function resolveItemIdAfterAction(
   initialItemId: string,
-  state: CreateTaskState,
+  state: CreateMutationState,
 ): string {
   if (state.status === "success" && state.nextItemId) {
     return state.nextItemId;
@@ -31,7 +31,7 @@ export function TaskCreateForm({
 }: TaskCreateFormProps) {
   const [state, action, pending] = useActionState(
     createTaskAction,
-    initialCreateTaskState,
+    initialCreateMutationState,
   );
   const formRef = useRef<HTMLFormElement>(null);
   const itemId = resolveItemIdAfterAction(initialItemId, state);

@@ -10,9 +10,9 @@ function isoDate(date: Date): string {
 
 export function createDemoPersonalWorkspace(reference = new Date()): PersonalWorkspace {
   const tasks = [
-    { id: "task-1", title: "Revisar funções", category: "Estudos", completed: true },
-    { id: "task-2", title: "Separar material", category: "Escola", completed: false },
-    { id: "task-3", title: "Organizar a semana", category: "Pessoal", completed: false },
+    { id: "task-1", title: "Revisar funções", category: "Estudos", completed: true, mutable: false },
+    { id: "task-2", title: "Separar material", category: "Escola", completed: false, mutable: false },
+    { id: "task-3", title: "Organizar a semana", category: "Pessoal", completed: false, mutable: false },
   ];
   const habits = [
     {
