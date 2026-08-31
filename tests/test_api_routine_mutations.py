@@ -1,12 +1,15 @@
 import json
 import logging
 from contextlib import contextmanager
+from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
 
 from api import mutation_audit, mutations, sheets
 from api.main import app
+from api.routine import build_routine_dashboard
+from api.sheets import DASHBOARD_SHEETS
 from modules import routine
 
 
@@ -36,6 +39,10 @@ def routine_record(status="Pendente"):
         "atividade": "Dentista",
         "status": status,
     }
+
+
+def empty_tables():
+    return {name: [] for name in DASHBOARD_SHEETS}
 
 
 def forbid_domain_calls(monkeypatch):
@@ -206,6 +213,44 @@ def test_routine_creation_trims_before_enforcing_title_limit(monkeypatch):
     assert captured == [(title, "08:30", "2026-08-25", PAYLOAD["id"])]
 
 
+def test_routine_creation_replays_legacy_record_without_status(monkeypatch):
+    enable_mutations(monkeypatch)
+    existing = {
+        "id": PAYLOAD["id"],
+        "data": PAYLOAD["date"],
+        "hora": PAYLOAD["time"],
+        "atividade": "Dentista",
+    }
+    cache_clears = []
+    monkeypatch.setattr(routine, "records", lambda _name: [existing])
+    monkeypatch.setattr(
+        routine,
+        "append_record",
+        lambda *_args, **_kwargs: pytest.fail("replay must not append"),
+    )
+    monkeypatch.setattr(
+        sheets,
+        "clear_dashboard_cache",
+        lambda: cache_clears.append(True),
+    )
+
+    response = client.post("/v1/routine-items", json=PAYLOAD, headers=HEADERS)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "operationId": "routine-request-1",
+        "created": False,
+        "item": {
+            "id": PAYLOAD["id"],
+            "date": PAYLOAD["date"],
+            "time": PAYLOAD["time"],
+            "title": "Dentista",
+            "completed": False,
+        },
+    }
+    assert cache_clears == [True]
+
+
 def test_routine_creation_maps_id_conflict_without_cache_clear(monkeypatch):
     enable_mutations(monkeypatch)
     monkeypatch.setattr(
@@ -283,6 +328,87 @@ def test_routine_patch_uses_desired_state_lock_and_cache(monkeypatch):
         "lock-exit",
         "cache-clear",
     ]
+
+
+def test_persistent_legacy_item_without_time_or_status_mutates_safely_once(
+    monkeypatch,
+):
+    enable_mutations(monkeypatch)
+    legacy = {
+        "id": "routine-legacy-1",
+        "data": "2026-08-25",
+        "atividade": "Consulta legada",
+    }
+    tables = empty_tables()
+    tables["Rotina"] = [legacy.copy()]
+    read_item = build_routine_dashboard(
+        tables,
+        date(2026, 8, 25),
+    ).items[0]
+    assert read_item.source_id == "routine-legacy-1"
+    assert read_item.time == "--:--"
+    assert read_item.completed is False
+    assert read_item.mutable is True
+
+    updates, awards, cache_clears = [], [], []
+    monkeypatch.setattr(routine, "records", lambda _name: [legacy])
+
+    def update_record(name, item_id, values):
+        updates.append((name, item_id, values))
+        legacy.update(values)
+        return True
+
+    monkeypatch.setattr(routine, "update_record", update_record)
+    monkeypatch.setattr(
+        routine,
+        "award_xp_once",
+        lambda *args: awards.append(args),
+    )
+    monkeypatch.setattr(
+        sheets,
+        "clear_dashboard_cache",
+        lambda: cache_clears.append(True),
+    )
+
+    first = client.patch(
+        "/v1/routine-items/routine-legacy-1",
+        json={"completed": True},
+        headers=HEADERS,
+    )
+    replay = client.patch(
+        "/v1/routine-items/routine-legacy-1",
+        json={"completed": True},
+        headers=HEADERS,
+    )
+
+    assert first.status_code == 200
+    assert first.json()["changed"] is True
+    assert first.json()["item"] == {
+        "id": "routine-legacy-1",
+        "date": "2026-08-25",
+        "time": "--:--",
+        "title": "Consulta legada",
+        "completed": True,
+    }
+    assert replay.status_code == 200
+    assert replay.json()["changed"] is False
+    assert replay.json()["item"] == first.json()["item"]
+    assert updates == [
+        (
+            "Rotina",
+            "routine-legacy-1",
+            {"status": "Concluída"},
+        )
+    ]
+    assert awards == [
+        (
+            "routine:routine-legacy-1",
+            10,
+            "rotina",
+            "Compromisso do dia concluído",
+        )
+    ]
+    assert cache_clears == [True, True]
 
 
 def test_routine_patch_returns_not_found_without_cache_clear(monkeypatch):

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import Field, field_validator
 
 from api import mutations, sheets
+from api.dashboard import _completed, _text
 from api.models import ApiModel
 from api.mutation_audit import log_mutation
 from api.mutation_http import (
@@ -102,9 +103,9 @@ def _routine_item(record):
     return RoutineMutationItem(
         id=str(record["id"]),
         date=record["data"],
-        time=str(record["hora"]),
-        title=str(record.get("atividade") or "Compromisso sem título"),
-        completed=str(record["status"]).casefold() in {"concluída", "concluida"},
+        time=_text(record.get("hora"), "--:--"),
+        title=_text(record.get("atividade"), "Compromisso sem título"),
+        completed=_completed(record.get("status")),
     )
 
 
