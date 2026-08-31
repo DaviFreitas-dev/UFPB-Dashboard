@@ -18,8 +18,20 @@ describe("routine contract", () => {
 
   it("valida o contrato completo e rejeita respostas incompletas", () => {
     const routine = createDemoRoutine(new Date(2026, 7, 22));
+    const withoutMutable = routine.items.map((item) => {
+      const copy: Partial<typeof item> = { ...item };
+      delete copy.mutable;
+      return copy;
+    });
+    const withoutSourceId = routine.items.map((item) => {
+      const copy: Partial<typeof item> = { ...item };
+      delete copy.sourceId;
+      return copy;
+    });
 
     expect(isRoutineDashboard(routine)).toBe(true);
     expect(isRoutineDashboard({ ...routine, items: undefined })).toBe(false);
+    expect(isRoutineDashboard({ ...routine, items: withoutMutable })).toBe(false);
+    expect(isRoutineDashboard({ ...routine, items: withoutSourceId })).toBe(false);
   });
 });

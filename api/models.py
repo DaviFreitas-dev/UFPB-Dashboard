@@ -161,11 +161,13 @@ class PlanningDashboard(ApiModel):
 
 class RoutineItem(ApiModel):
     id: str
+    source_id: str
     time: str
     title: str
     category: str
     kind: Literal["fixed", "custom"]
     completed: bool
+    mutable: bool
 
 
 class RoutineDashboard(ApiModel):

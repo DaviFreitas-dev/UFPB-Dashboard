@@ -42,26 +42,31 @@ def _items(tables, reference):
         result.append(
             RoutineItem(
                 id=f"fixed:{source_id}",
+                source_id="",
                 time=_text(row.get("hora"), "--:--"),
                 title=_text(row.get("atividade"), "Atividade sem título"),
                 category=_text(row.get("categoria"), "Agenda fixa"),
                 kind="fixed",
                 completed=_completed(checkins.get(source_id, {}).get("status")),
+                mutable=False,
             )
         )
 
     for index, row in enumerate(_rows(tables, "Rotina")):
         if _date(row.get("data")) != reference:
             continue
-        source_id = _row_id(row, "routine", index)
+        source_id = _text(row.get("id"))
+        display_id = source_id or _row_id(row, "routine", index)
         result.append(
             RoutineItem(
-                id=f"custom:{source_id}",
+                id=f"custom:{display_id}",
+                source_id=source_id,
                 time=_text(row.get("hora"), "--:--"),
                 title=_text(row.get("atividade"), "Compromisso sem título"),
                 category="Avulso",
                 kind="custom",
                 completed=_completed(row.get("status")),
+                mutable=bool(source_id),
             )
         )
 

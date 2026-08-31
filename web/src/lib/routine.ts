@@ -2,11 +2,13 @@ import { isDashboardUser, type DashboardUser } from "@/lib/dashboard";
 
 export type RoutineItem = {
   id: string;
+  sourceId: string;
   time: string;
   title: string;
   category: string;
   kind: "fixed" | "custom";
   completed: boolean;
+  mutable: boolean;
 };
 
 export type RoutineDashboard = {
@@ -85,11 +87,13 @@ function isRoutineItem(value: unknown): value is RoutineItem {
   return (
     isRecord(value) &&
     isString(value.id) &&
+    isString(value.sourceId) &&
     isString(value.time) &&
     isString(value.title) &&
     isString(value.category) &&
     (value.kind === "fixed" || value.kind === "custom") &&
-    isBoolean(value.completed)
+    isBoolean(value.completed) &&
+    isBoolean(value.mutable)
   );
 }
 

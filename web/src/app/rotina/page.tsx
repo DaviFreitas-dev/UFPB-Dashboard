@@ -1,7 +1,10 @@
+import { randomUUID } from "node:crypto";
+
 import { AppShell } from "@/components/app-shell";
 import { RoutineDashboard } from "@/components/routine-dashboard";
 import { normalizeRoutineDate } from "@/lib/routine";
 import { loadRoutineDashboard } from "@/lib/routine-source";
+import { mutationsUiEnabled } from "@/lib/write-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +20,11 @@ export default async function RoutinePage({ searchParams }: RoutinePageProps) {
 
   return (
     <AppShell currentPath="/rotina" user={result.routine.user}>
-      <RoutineDashboard {...result} />
+      <RoutineDashboard
+        {...result}
+        canMutate={result.source === "api" && mutationsUiEnabled()}
+        initialItemId={randomUUID()}
+      />
     </AppShell>
   );
 }

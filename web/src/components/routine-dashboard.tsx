@@ -12,6 +12,10 @@ import {
 
 import { formatDatePtBr, ratio } from "@/lib/dashboard";
 import { addRoutineDays, type RoutineResult } from "@/lib/routine";
+import {
+  RoutineControls,
+  RoutineCreateForm,
+} from "./personal-actions/routine-controls";
 import styles from "./routine-dashboard.module.css";
 
 function weekday(value: string): string {
@@ -22,7 +26,17 @@ function weekday(value: string): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-export function RoutineDashboard({ routine, source }: RoutineResult) {
+type RoutineDashboardProps = RoutineResult & {
+  canMutate: boolean;
+  initialItemId: string;
+};
+
+export function RoutineDashboard({
+  routine,
+  source,
+  canMutate,
+  initialItemId,
+}: RoutineDashboardProps) {
   const previousDate = addRoutineDays(routine.date, -1);
   const nextDate = addRoutineDays(routine.date, 1);
   const progress = ratio(routine.completed, routine.total);
@@ -115,6 +129,17 @@ export function RoutineDashboard({ routine, source }: RoutineResult) {
         </article>
       </section>
 
+      {canMutate ? (
+        <RoutineCreateForm
+          initialItemId={initialItemId}
+          selectedDate={routine.date}
+        />
+      ) : source === "api" ? (
+        <p className={styles.writesUnavailable}>
+          As alterações ainda não estão disponíveis nesta versão.
+        </p>
+      ) : null}
+
       <div className={styles.contentGrid}>
         <section className={styles.timelineSection}>
           <div className={styles.sectionHeading}>
@@ -142,6 +167,10 @@ export function RoutineDashboard({ routine, source }: RoutineResult) {
                       <span>·</span>
                       {item.kind === "fixed" ? "Semana fixa" : "Compromisso avulso"}
                     </p>
+                    <RoutineControls
+                      canMutate={source === "api" && canMutate}
+                      item={item}
+                    />
                   </div>
                 </article>
               ))
