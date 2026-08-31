@@ -106,6 +106,37 @@ describe("TaskControls", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("substitui erro antigo de exclusão pelo sucesso da ação mais recente", async () => {
+    deleteTaskAction.mockResolvedValue({
+      status: "error",
+      message: "Não foi possível excluir a tarefa agora.",
+    });
+    setTaskCompletedAction.mockResolvedValue({
+      status: "success",
+      message: "Tarefa concluída.",
+    });
+    const user = userEvent.setup();
+    render(<TaskControls task={task} canMutate />);
+
+    await user.click(screen.getByRole("button", { name: "Excluir tarefa" }));
+    await user.click(
+      screen.getByRole("button", { name: "Confirmar exclusão" }),
+    );
+    expect(
+      await screen.findByText("Não foi possível excluir a tarefa agora."),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Cancelar exclusão" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Concluir tarefa" }));
+
+    expect(await screen.findByText("Tarefa concluída.")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Não foi possível excluir a tarefa agora."),
+    ).not.toBeInTheDocument();
+  });
+
   it("mantém a tarefa legada visível sem controles mutáveis", () => {
     render(
       <TaskControls

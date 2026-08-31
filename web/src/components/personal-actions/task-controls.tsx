@@ -30,6 +30,9 @@ function CancelDeleteButton({ onCancel }: { onCancel: () => void }) {
 
 export function TaskControls({ task, canMutate }: TaskControlsProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [feedbackSource, setFeedbackSource] = useState<
+    "state" | "delete" | null
+  >(null);
   const [state, stateAction] = useActionState(
     setTaskCompletedAction,
     initialInlineMutationState,
@@ -42,13 +45,18 @@ export function TaskControls({ task, canMutate }: TaskControlsProps) {
   if (!canMutate || !task.mutable) return null;
 
   const targetCompleted = !task.completed;
-  const message = deleteState.message || state.message;
+  const message =
+    feedbackSource === "delete"
+      ? deleteState.message
+      : feedbackSource === "state"
+        ? state.message
+        : "";
   const showDeleteConfirmation =
     confirmingDelete && deleteState.status !== "success";
 
   return (
     <div className={styles.taskControls}>
-      <form action={stateAction}>
+      <form action={stateAction} onSubmit={() => setFeedbackSource("state")}>
         <input name="id" type="hidden" value={task.id} />
         <input
           name="completed"
@@ -62,7 +70,10 @@ export function TaskControls({ task, canMutate }: TaskControlsProps) {
 
       {showDeleteConfirmation ? (
         <div className={styles.deleteConfirmation}>
-          <form action={deleteAction}>
+          <form
+            action={deleteAction}
+            onSubmit={() => setFeedbackSource("delete")}
+          >
             <span>Excluir esta tarefa?</span>
             <input name="id" type="hidden" value={task.id} />
             <MutationSubmitButton pendingLabel="Excluindo...">
