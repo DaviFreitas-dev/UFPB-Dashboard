@@ -6,10 +6,12 @@ from urllib.parse import quote
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import TypeAdapter, ValidationError
 
 from api import mutation_audit, mutations, sheets
 from api.main import app
 from api.routine import build_routine_dashboard
+from api.routine_mutations import RoutineItemPathId
 from api.sheets import DASHBOARD_SHEETS
 from modules import routine
 
@@ -444,6 +446,17 @@ def test_routine_item_routes_reject_blank_ids_before_domain(
     assert response.json()["error"]["code"] == "invalid_request"
 
 
+@pytest.mark.parametrize("item_id", [".", ".."])
+def test_routine_item_path_contract_rejects_unsafe_dot_segments(item_id):
+    with pytest.raises(ValidationError):
+        TypeAdapter(RoutineItemPathId).validate_python(item_id)
+
+
+@pytest.mark.parametrize("item_id", ["legacy..item", "legacy/folder.item"])
+def test_routine_item_path_contract_accepts_normal_points(item_id):
+    assert TypeAdapter(RoutineItemPathId).validate_python(item_id) == item_id
+
+
 def test_persistent_legacy_item_without_time_or_status_mutates_safely_once(
     monkeypatch,
 ):
@@ -529,6 +542,111 @@ def test_persistent_legacy_item_without_time_or_status_mutates_safely_once(
         )
     ]
     assert cache_clears == [True, True]
+
+
+def test_normalized_public_id_updates_the_exact_persisted_legacy_id(
+    monkeypatch,
+):
+    enable_mutations(monkeypatch)
+    normalized_id = "legacy/folder/item"
+    persisted_id = f"  {normalized_id}  "
+    legacy = {
+        "id": persisted_id,
+        "data": "2026-08-25",
+        "hora": "08:30",
+        "atividade": "Consulta legada",
+        "status": "Pendente",
+    }
+    tables = empty_tables()
+    tables["Rotina"] = [legacy.copy()]
+
+    read_item = build_routine_dashboard(tables, date(2026, 8, 25)).items[0]
+    assert read_item.source_id == normalized_id
+    assert read_item.mutable is True
+
+    updates, awards = [], []
+    monkeypatch.setattr(routine, "records", lambda _name: [legacy])
+
+    def update_record(name, item_id, values):
+        updates.append((name, item_id, values))
+        if item_id != legacy["id"]:
+            return False
+        legacy.update(values)
+        return True
+
+    monkeypatch.setattr(routine, "update_record", update_record)
+    monkeypatch.setattr(
+        routine,
+        "award_xp_once",
+        lambda *args: awards.append(args),
+    )
+    monkeypatch.setattr(sheets, "clear_dashboard_cache", lambda: None)
+    path = f"/v1/routine-items/{quote(normalized_id, safe='')}"
+
+    first = client.patch(
+        path,
+        json={"completed": True},
+        headers=HEADERS,
+    )
+    replay = client.patch(
+        path,
+        json={"completed": True},
+        headers=HEADERS,
+    )
+
+    assert first.status_code == replay.status_code == 200
+    assert first.json()["item"]["id"] == normalized_id
+    assert first.json()["changed"] is True
+    assert replay.json()["item"] == first.json()["item"]
+    assert replay.json()["changed"] is False
+    assert updates == [
+        ("Rotina", persisted_id, {"status": "Concluída"})
+    ]
+    assert awards == [
+        (
+            f"routine:{normalized_id}",
+            10,
+            "rotina",
+            "Compromisso do dia concluído",
+        ),
+        (
+            f"routine:{normalized_id}",
+            10,
+            "rotina",
+            "Compromisso do dia concluído",
+        ),
+    ]
+
+
+def test_normalized_public_id_deletes_the_exact_persisted_legacy_id(
+    monkeypatch,
+):
+    enable_mutations(monkeypatch)
+    normalized_id = "legacy/folder/item"
+    persisted_id = f"  {normalized_id}  "
+    rows = [{"id": persisted_id, "data": "2026-08-25"}]
+    deletes = []
+    monkeypatch.setattr(routine, "records", lambda _name: list(rows))
+
+    def delete_record(name, item_id):
+        deletes.append((name, item_id))
+        if not rows or item_id != rows[0]["id"]:
+            return False
+        rows.clear()
+        return True
+
+    monkeypatch.setattr(routine, "delete_record", delete_record)
+    monkeypatch.setattr(sheets, "clear_dashboard_cache", lambda: None)
+    path = f"/v1/routine-items/{quote(normalized_id, safe='')}"
+
+    first = client.delete(path, headers=HEADERS)
+    replay = client.delete(path, headers=HEADERS)
+
+    assert first.status_code == replay.status_code == 200
+    assert first.json()["id"] == replay.json()["id"] == normalized_id
+    assert first.json()["deleted"] is True
+    assert replay.json()["deleted"] is False
+    assert deletes == [("Rotina", persisted_id)]
 
 
 def test_routine_patch_returns_not_found_without_cache_clear(monkeypatch):

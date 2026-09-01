@@ -164,3 +164,36 @@ def test_custom_items_respect_the_safe_identity_limit(
 
     assert payload["items"][0]["sourceId"] == item_id
     assert payload["items"][0]["mutable"] is expected_mutable
+
+
+@pytest.mark.parametrize(
+    ("item_id", "expected_mutable"),
+    [
+        (".", False),
+        ("..", False),
+        ("legacy..item", True),
+        ("legacy/folder.item", True),
+    ],
+)
+def test_custom_items_reject_only_unsafe_dot_segment_identities(
+    item_id,
+    expected_mutable,
+):
+    tables = empty_tables()
+    tables["Rotina"] = [
+        {
+            "id": item_id,
+            "data": "2026-08-22",
+            "hora": "08:30",
+            "atividade": "Legado",
+            "status": "Pendente",
+        }
+    ]
+
+    payload = build_routine_dashboard(
+        tables,
+        date(2026, 8, 22),
+    ).model_dump(by_alias=True)
+
+    assert payload["items"][0]["sourceId"] == item_id
+    assert payload["items"][0]["mutable"] is expected_mutable

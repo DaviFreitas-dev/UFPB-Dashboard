@@ -30,11 +30,12 @@ export type CreateTaskResponse = z.infer<typeof CreateTaskResponseSchema>;
 
 export const MAX_ROUTINE_ITEM_ID_LENGTH = 512;
 
-const PersistentRoutineItemIdSchema = z
+export const PersistentRoutineItemIdSchema = z
   .string()
   .trim()
   .min(1)
-  .max(MAX_ROUTINE_ITEM_ID_LENGTH);
+  .max(MAX_ROUTINE_ITEM_ID_LENGTH)
+  .refine((itemId) => itemId !== "." && itemId !== "..");
 
 const ExistingRoutineMutationItemSchema = z.strictObject({
   id: PersistentRoutineItemIdSchema,

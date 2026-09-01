@@ -93,7 +93,8 @@ def add(activity, time_text, target_date=None, item_id=None):
 
 
 def set_completed(item_id, completed):
-    current = _record_with_id(item_id)
+    normalized_id = str(item_id).strip()
+    current = _record_with_id(normalized_id)
     if current is None:
         return None, False
 
@@ -105,7 +106,7 @@ def set_completed(item_id, completed):
     }
     if completed and already_completed:
         award_xp_once(
-            f"routine:{item_id}",
+            f"routine:{normalized_id}",
             10,
             "rotina",
             "Compromisso do dia concluído",
@@ -114,13 +115,13 @@ def set_completed(item_id, completed):
     if current_status == target:
         return {**current, "status": target}, False
 
-    if not update_record("Rotina", item_id, {"status": target}):
+    if not update_record("Rotina", current["id"], {"status": target}):
         return None, False
 
     confirmed = {**current, "status": target}
     if completed:
         award_xp_once(
-            f"routine:{item_id}",
+            f"routine:{normalized_id}",
             10,
             "rotina",
             "Compromisso do dia concluído",

@@ -241,6 +241,35 @@ describe("createRoutineItemAction", () => {
 });
 
 describe("routine lifecycle actions", () => {
+  it.each([".", ".."])(
+    "recusa o segmento inseguro %j nos contratos persistentes",
+    (itemId) => {
+      expect(
+        RoutineItemStateResponseSchema.safeParse(
+          confirmedState(true, { id: itemId }),
+        ).success,
+      ).toBe(false);
+      expect(
+        DeleteRoutineItemResponseSchema.safeParse({
+          operationId: "routine-request-1",
+          id: itemId,
+          deleted: true,
+        }).success,
+      ).toBe(false);
+    },
+  );
+
+  it.each(["legacy..item", "legacy/folder.item"])(
+    "aceita pontos normais na identidade persistente %j",
+    (itemId) => {
+      expect(
+        RoutineItemStateResponseSchema.safeParse(
+          confirmedState(true, { id: itemId }),
+        ).success,
+      ).toBe(true);
+    },
+  );
+
   it("limita a identidade persistente a 512 caracteres nos contratos", () => {
     const acceptedId = "i".repeat(512);
     const rejectedId = "i".repeat(513);
@@ -420,6 +449,51 @@ describe("routine lifecycle actions", () => {
     expect(deleteState).toEqual(state);
     expect(requestNexoApi).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it.each([".", ".."])(
+    "recusa o segmento inseguro %j nas actions antes da API",
+    async (itemId) => {
+      const state = await setRoutineItemCompletedAction(
+        initialInlineMutationState,
+        stateForm("true", itemId),
+      );
+      const deleteState = await deleteRoutineItemAction(
+        initialInlineMutationState,
+        deleteForm(itemId),
+      );
+
+      expect(state).toEqual({
+        status: "error",
+        message: "Revise os dados do compromisso.",
+      });
+      expect(deleteState).toEqual(state);
+      expect(requestNexoApi).not.toHaveBeenCalled();
+      expect(revalidatePath).not.toHaveBeenCalled();
+    },
+  );
+
+  it("altera uma identidade normal que contém pontos", async () => {
+    const itemId = "legacy..item";
+    vi.mocked(requestNexoApi).mockResolvedValue(
+      confirmedState(true, { id: itemId }),
+    );
+
+    const state = await setRoutineItemCompletedAction(
+      initialInlineMutationState,
+      stateForm("true", itemId),
+    );
+
+    expect(state.status).toBe("success");
+    expect(requestNexoApi).toHaveBeenCalledWith(
+      `/v1/routine-items/${itemId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ completed: true }),
+      },
+      RoutineItemStateResponseSchema,
+    );
+    expect(revalidatePath.mock.calls).toEqual([["/rotina"], ["/"]]);
   });
 
   it("não revalida uma resposta com estado divergente", async () => {

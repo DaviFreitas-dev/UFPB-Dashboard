@@ -10,7 +10,7 @@ import { NexoApiError, requestNexoApi } from "@/lib/nexo-api";
 import {
   CreateRoutineItemResponseSchema,
   DeleteRoutineItemResponseSchema,
-  MAX_ROUTINE_ITEM_ID_LENGTH,
+  PersistentRoutineItemIdSchema,
   RoutineItemStateResponseSchema,
 } from "@/lib/personal-mutation-contracts";
 import { mutationsUiEnabled } from "@/lib/write-policy";
@@ -34,16 +34,11 @@ const CreateRoutineItemSchema = z.object({
   time: TimeSchema,
   date: z.iso.date({ error: "Informe uma data válida." }),
 });
-const RoutineItemIdSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(MAX_ROUTINE_ITEM_ID_LENGTH);
 const RoutineItemStateSchema = z.object({
-  id: RoutineItemIdSchema,
+  id: PersistentRoutineItemIdSchema,
   completed: z.enum(["true", "false"]).transform((value) => value === "true"),
 });
-const DeleteRoutineItemSchema = z.object({ id: RoutineItemIdSchema });
+const DeleteRoutineItemSchema = z.object({ id: PersistentRoutineItemIdSchema });
 
 const writesDisabledState: InlineMutationState = {
   status: "error",

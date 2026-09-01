@@ -14,6 +14,16 @@ from modules.config import WEEKDAYS
 
 
 MAX_ROUTINE_ITEM_ID_LENGTH = 512
+_UNSAFE_ROUTINE_ITEM_IDS = {".", ".."}
+
+
+def is_safe_routine_item_id(value):
+    item_id = str(value or "").strip()
+    return (
+        bool(item_id)
+        and len(item_id) <= MAX_ROUTINE_ITEM_ID_LENGTH
+        and item_id not in _UNSAFE_ROUTINE_ITEM_IDS
+    )
 
 
 def _time_key(item):
@@ -69,10 +79,7 @@ def _items(tables, reference):
                 category="Avulso",
                 kind="custom",
                 completed=_completed(row.get("status")),
-                mutable=(
-                    bool(source_id)
-                    and len(source_id) <= MAX_ROUTINE_ITEM_ID_LENGTH
-                ),
+                mutable=is_safe_routine_item_id(source_id),
             )
         )
 

@@ -4,7 +4,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Request
-from pydantic import Field, StringConstraints, field_validator
+from pydantic import AfterValidator, Field, StringConstraints, field_validator
 
 from api import mutations, sheets
 from api.dashboard import _completed, _text
@@ -17,7 +17,7 @@ from api.mutation_http import (
     validate_json_body,
 )
 from api.mutations import NexoMutationError
-from api.routine import MAX_ROUTINE_ITEM_ID_LENGTH
+from api.routine import MAX_ROUTINE_ITEM_ID_LENGTH, is_safe_routine_item_id
 from modules import routine
 
 
@@ -37,6 +37,13 @@ router = APIRouter(
     route_class=MutationApiRoute,
 )
 
+
+def _validate_safe_routine_item_id(item_id):
+    if not is_safe_routine_item_id(item_id):
+        raise ValueError("Identidade insegura.")
+    return item_id
+
+
 RoutineItemPathId = Annotated[
     str,
     StringConstraints(
@@ -44,6 +51,7 @@ RoutineItemPathId = Annotated[
         min_length=1,
         max_length=MAX_ROUTINE_ITEM_ID_LENGTH,
     ),
+    AfterValidator(_validate_safe_routine_item_id),
     Path(),
 ]
 
@@ -113,7 +121,7 @@ async def parse_set_routine_item_state_request(
 
 def _routine_item(record):
     return RoutineMutationItem(
-        id=str(record["id"]),
+        id=_text(record.get("id")),
         date=record["data"],
         time=_text(record.get("hora"), "--:--"),
         title=_text(record.get("atividade"), "Compromisso sem título"),
