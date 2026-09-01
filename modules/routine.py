@@ -103,7 +103,15 @@ def set_completed(item_id, completed):
         "concluída",
         "concluida",
     }
-    if (completed and already_completed) or current_status == target:
+    if completed and already_completed:
+        award_xp_once(
+            f"routine:{item_id}",
+            10,
+            "rotina",
+            "Compromisso do dia concluído",
+        )
+        return {**current, "status": target}, False
+    if current_status == target:
         return {**current, "status": target}, False
 
     if not update_record("Rotina", item_id, {"status": target}):

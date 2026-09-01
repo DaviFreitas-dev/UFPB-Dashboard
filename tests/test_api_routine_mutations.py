@@ -406,6 +406,12 @@ def test_persistent_legacy_item_without_time_or_status_mutates_safely_once(
             10,
             "rotina",
             "Compromisso do dia concluído",
+        ),
+        (
+            "routine:routine-legacy-1",
+            10,
+            "rotina",
+            "Compromisso do dia concluído",
         )
     ]
     assert cache_clears == [True, True]

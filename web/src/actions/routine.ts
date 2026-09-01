@@ -33,7 +33,7 @@ const CreateRoutineItemSchema = z.object({
   time: TimeSchema,
   date: z.iso.date({ error: "Informe uma data válida." }),
 });
-const RoutineItemIdSchema = z.string().trim().min(1).max(80);
+const RoutineItemIdSchema = z.string().trim().min(1);
 const RoutineItemStateSchema = z.object({
   id: RoutineItemIdSchema,
   completed: z.enum(["true", "false"]).transform((value) => value === "true"),

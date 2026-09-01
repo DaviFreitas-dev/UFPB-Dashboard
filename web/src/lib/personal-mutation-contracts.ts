@@ -28,32 +28,35 @@ export const DeleteTaskResponseSchema = z.strictObject({
 
 export type CreateTaskResponse = z.infer<typeof CreateTaskResponseSchema>;
 
-const RoutineMutationItemSchema = z.strictObject({
-  id: z.string().trim().min(1).max(80),
+const PersistentRoutineItemIdSchema = z.string().trim().min(1);
+
+const ExistingRoutineMutationItemSchema = z.strictObject({
+  id: PersistentRoutineItemIdSchema,
   date: z.iso.date(),
-  time: z.string().trim().min(1).max(40),
-  title: z.string().min(1).max(160),
+  time: z.string().trim().min(1),
+  title: z.string().min(1),
   completed: z.boolean(),
 });
 
 export const CreateRoutineItemResponseSchema = z.strictObject({
   operationId: z.string().min(1).max(80),
   created: z.boolean(),
-  item: RoutineMutationItemSchema.extend({
+  item: ExistingRoutineMutationItemSchema.extend({
     id: z.uuid(),
     time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+    title: z.string().min(1).max(160),
   }),
 });
 
 export const RoutineItemStateResponseSchema = z.strictObject({
   operationId: z.string().min(1).max(80),
   changed: z.boolean(),
-  item: RoutineMutationItemSchema,
+  item: ExistingRoutineMutationItemSchema,
 });
 
 export const DeleteRoutineItemResponseSchema = z.strictObject({
   operationId: z.string().min(1).max(80),
-  id: z.string().trim().min(1).max(80),
+  id: PersistentRoutineItemIdSchema,
   deleted: z.boolean(),
 });
 

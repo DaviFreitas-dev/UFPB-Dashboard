@@ -152,7 +152,6 @@ def test_set_completed_changes_state_and_awards_xp_once(monkeypatch):
 @pytest.mark.parametrize(
     ("current_status", "completed", "expected_status"),
     [
-        ("Concluída", True, "Concluída"),
         ("Pendente", False, "Pendente"),
     ],
 )
@@ -184,6 +183,82 @@ def test_set_completed_replay_does_not_write_or_award(
     assert record["status"] == expected_status
 
 
+def test_completed_replay_retries_idempotent_xp_without_rewriting(monkeypatch):
+    awards = []
+    monkeypatch.setattr(
+        routine,
+        "records",
+        lambda _name: [{"id": "routine-1", "status": "Concluída"}],
+    )
+    monkeypatch.setattr(
+        routine,
+        "update_record",
+        lambda *_args: pytest.fail("completed replay must not rewrite status"),
+    )
+    monkeypatch.setattr(
+        routine,
+        "award_xp_once",
+        lambda *args: awards.append(args),
+    )
+
+    record, changed = routine.set_completed("routine-1", True)
+
+    assert changed is False
+    assert record["status"] == "Concluída"
+    assert awards == [
+        (
+            "routine:routine-1",
+            10,
+            "rotina",
+            "Compromisso do dia concluído",
+        )
+    ]
+
+
+def test_completed_retry_recovers_xp_after_first_award_failure(monkeypatch):
+    row = {"id": "routine-1", "status": "Pendente"}
+    updates, awards = [], []
+    monkeypatch.setattr(routine, "records", lambda _name: [row])
+
+    def update_record(name, item_id, values):
+        updates.append((name, item_id, values))
+        row.update(values)
+        return True
+
+    def award_xp_once(*args):
+        awards.append(args)
+        if len(awards) == 1:
+            raise RuntimeError("xp temporarily unavailable")
+
+    monkeypatch.setattr(routine, "update_record", update_record)
+    monkeypatch.setattr(routine, "award_xp_once", award_xp_once)
+
+    with pytest.raises(RuntimeError, match="temporarily unavailable"):
+        routine.set_completed("routine-1", True)
+
+    record, changed = routine.set_completed("routine-1", True)
+
+    assert changed is False
+    assert record["status"] == "Concluída"
+    assert updates == [
+        ("Rotina", "routine-1", {"status": "Concluída"})
+    ]
+    assert awards == [
+        (
+            "routine:routine-1",
+            10,
+            "rotina",
+            "Compromisso do dia concluído",
+        ),
+        (
+            "routine:routine-1",
+            10,
+            "rotina",
+            "Compromisso do dia concluído",
+        ),
+    ]
+
+
 def test_set_completed_reopens_without_awarding_xp(monkeypatch):
     updates = []
     monkeypatch.setattr(
@@ -210,7 +285,10 @@ def test_set_completed_reopens_without_awarding_xp(monkeypatch):
     assert updates == [("Rotina", "routine-1", {"status": "Pendente"})]
 
 
-def test_set_completed_treats_legacy_completed_spelling_as_replay(monkeypatch):
+def test_set_completed_treats_legacy_completed_spelling_as_xp_replay(
+    monkeypatch,
+):
+    awards = []
     monkeypatch.setattr(
         routine,
         "records",
@@ -224,13 +302,21 @@ def test_set_completed_treats_legacy_completed_spelling_as_replay(monkeypatch):
     monkeypatch.setattr(
         routine,
         "award_xp_once",
-        lambda *_args: pytest.fail("a replay must not award XP"),
+        lambda *args: awards.append(args),
     )
 
     record, changed = routine.set_completed("routine-1", True)
 
     assert changed is False
     assert record["status"] == "Concluída"
+    assert awards == [
+        (
+            "routine:routine-1",
+            10,
+            "rotina",
+            "Compromisso do dia concluído",
+        )
+    ]
 
 
 @pytest.mark.parametrize("item_id", ["routine-1", "None", ""])

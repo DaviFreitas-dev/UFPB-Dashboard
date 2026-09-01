@@ -57,20 +57,29 @@ function confirmedCreateResponse(
   };
 }
 
-function stateForm(completed: string) {
+function stateForm(completed: string, id = "routine-1") {
   const form = new FormData();
-  form.set("id", "routine-1");
+  form.set("id", id);
   form.set("completed", completed);
   return form;
 }
 
-function deleteForm() {
+function deleteForm(id = "routine-1") {
   const form = new FormData();
-  form.set("id", "routine-1");
+  form.set("id", id);
   return form;
 }
 
-function confirmedState(completed: boolean) {
+function confirmedState(
+  completed: boolean,
+  item: Partial<{
+    id: string;
+    date: string;
+    time: string;
+    title: string;
+    completed: boolean;
+  }> = {},
+) {
   return {
     operationId: "routine-request-1",
     changed: true,
@@ -80,6 +89,7 @@ function confirmedState(completed: boolean) {
       time: "08:30",
       title: "Dentista",
       completed,
+      ...item,
     },
   };
 }
@@ -231,6 +241,34 @@ describe("createRoutineItemAction", () => {
 });
 
 describe("routine lifecycle actions", () => {
+  it("aceita contratos legados longos apenas na confirmação de registros existentes", () => {
+    const legacyId = `legacy/${"i".repeat(90)}`;
+    const legacyTime = `horário legado ${"h".repeat(40)}`;
+    const legacyTitle = `Compromisso legado ${"t".repeat(160)}`;
+
+    expect(
+      RoutineItemStateResponseSchema.safeParse(
+        confirmedState(true, {
+          id: legacyId,
+          time: legacyTime,
+          title: legacyTitle,
+        }),
+      ).success,
+    ).toBe(true);
+    expect(
+      DeleteRoutineItemResponseSchema.safeParse({
+        operationId: "routine-request-1",
+        id: legacyId,
+        deleted: true,
+      }).success,
+    ).toBe(true);
+    expect(
+      CreateRoutineItemResponseSchema.safeParse(
+        confirmedCreateResponse(true, { title: legacyTitle }),
+      ).success,
+    ).toBe(false);
+  });
+
   it("aceita horário legado na confirmação de uma mudança de estado", () => {
     expect(
       RoutineItemStateResponseSchema.safeParse({
@@ -282,6 +320,34 @@ describe("routine lifecycle actions", () => {
     expect(revalidatePath.mock.calls).toEqual([["/rotina"], ["/"]]);
   });
 
+  it("altera um ID persistente longo e aceita a confirmação legada longa", async () => {
+    const legacyId = `legacy/${"i".repeat(90)}`;
+    const response = confirmedState(true, {
+      id: legacyId,
+      time: `horário legado ${"h".repeat(40)}`,
+      title: `Compromisso legado ${"t".repeat(160)}`,
+    });
+    vi.mocked(requestNexoApi).mockImplementation(
+      async (_path, _init, responseSchema) => responseSchema.parse(response),
+    );
+
+    const state = await setRoutineItemCompletedAction(
+      initialInlineMutationState,
+      stateForm("true", legacyId),
+    );
+
+    expect(requestNexoApi).toHaveBeenCalledWith(
+      `/v1/routine-items/${encodeURIComponent(legacyId)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ completed: true }),
+      },
+      RoutineItemStateResponseSchema,
+    );
+    expect(state.status).toBe("success");
+    expect(revalidatePath.mock.calls).toEqual([["/rotina"], ["/"]]);
+  });
+
   it("não revalida uma resposta com estado divergente", async () => {
     vi.mocked(requestNexoApi).mockResolvedValue(confirmedState(false));
 
@@ -320,6 +386,28 @@ describe("routine lifecycle actions", () => {
       expect(revalidatePath.mock.calls).toEqual([["/rotina"], ["/"]]);
     },
   );
+
+  it("exclui um ID persistente longo com URL segura", async () => {
+    const legacyId = `legacy/${"i".repeat(90)}`;
+    vi.mocked(requestNexoApi).mockResolvedValue({
+      operationId: "routine-request-1",
+      id: legacyId,
+      deleted: true,
+    });
+
+    const state = await deleteRoutineItemAction(
+      initialInlineMutationState,
+      deleteForm(legacyId),
+    );
+
+    expect(requestNexoApi).toHaveBeenCalledWith(
+      `/v1/routine-items/${encodeURIComponent(legacyId)}`,
+      { method: "DELETE" },
+      DeleteRoutineItemResponseSchema,
+    );
+    expect(state.status).toBe("success");
+    expect(revalidatePath.mock.calls).toEqual([["/rotina"], ["/"]]);
+  });
 
   it("recusa confirmação de exclusão para outro ID", async () => {
     vi.mocked(requestNexoApi).mockResolvedValue({
