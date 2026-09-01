@@ -28,7 +28,13 @@ export const DeleteTaskResponseSchema = z.strictObject({
 
 export type CreateTaskResponse = z.infer<typeof CreateTaskResponseSchema>;
 
-const PersistentRoutineItemIdSchema = z.string().trim().min(1);
+export const MAX_ROUTINE_ITEM_ID_LENGTH = 512;
+
+const PersistentRoutineItemIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(MAX_ROUTINE_ITEM_ID_LENGTH);
 
 const ExistingRoutineMutationItemSchema = z.strictObject({
   id: PersistentRoutineItemIdSchema,

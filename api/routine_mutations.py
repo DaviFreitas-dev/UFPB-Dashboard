@@ -1,9 +1,10 @@
 import time
 from datetime import date
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
-from pydantic import Field, field_validator
+from fastapi import APIRouter, Depends, Path, Request
+from pydantic import Field, StringConstraints, field_validator
 
 from api import mutations, sheets
 from api.dashboard import _completed, _text
@@ -16,6 +17,7 @@ from api.mutation_http import (
     validate_json_body,
 )
 from api.mutations import NexoMutationError
+from api.routine import MAX_ROUTINE_ITEM_ID_LENGTH
 from modules import routine
 
 
@@ -34,6 +36,16 @@ router = APIRouter(
     tags=["rotina"],
     route_class=MutationApiRoute,
 )
+
+RoutineItemPathId = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=1,
+        max_length=MAX_ROUTINE_ITEM_ID_LENGTH,
+    ),
+    Path(),
+]
 
 
 class CreateRoutineItemRequest(ApiModel):
@@ -233,7 +245,7 @@ def create_routine_item(
 
 
 @router.patch(
-    "/{item_id}",
+    "/{item_id:path}",
     response_model=SetRoutineItemStateResponse,
     response_model_by_alias=True,
     responses={
@@ -264,7 +276,7 @@ def create_routine_item(
 )
 def set_routine_item_state(
     request: Request,
-    item_id: str,
+    item_id: RoutineItemPathId,
     payload: SetRoutineItemStateRequest = Depends(
         parse_set_routine_item_state_request
     ),
@@ -326,7 +338,7 @@ def set_routine_item_state(
 
 
 @router.delete(
-    "/{item_id}",
+    "/{item_id:path}",
     response_model=DeleteRoutineItemResponse,
     response_model_by_alias=True,
     responses={
@@ -341,7 +353,7 @@ def set_routine_item_state(
 )
 def delete_routine_item(
     request: Request,
-    item_id: str,
+    item_id: RoutineItemPathId,
     _token=Depends(require_mutation_api_token),
     _writes=Depends(mutations.require_api_writes),
 ):

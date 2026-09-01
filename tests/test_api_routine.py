@@ -1,6 +1,8 @@
 import copy
 from datetime import date
 
+import pytest
+
 from api.routine import build_routine_dashboard
 from api.sheets import DASHBOARD_SHEETS
 
@@ -133,3 +135,32 @@ def test_fixed_items_ignore_persistent_identity_for_mutation_controls():
     assert payload["items"][0]["kind"] == "fixed"
     assert payload["items"][0]["sourceId"] == ""
     assert payload["items"][0]["mutable"] is False
+
+
+@pytest.mark.parametrize(
+    ("id_length", "expected_mutable"),
+    [(512, True), (513, False)],
+)
+def test_custom_items_respect_the_safe_identity_limit(
+    id_length,
+    expected_mutable,
+):
+    tables = empty_tables()
+    item_id = "i" * id_length
+    tables["Rotina"] = [
+        {
+            "id": item_id,
+            "data": "2026-08-22",
+            "hora": "08:30",
+            "atividade": "Legado",
+            "status": "Pendente",
+        }
+    ]
+
+    payload = build_routine_dashboard(
+        tables,
+        date(2026, 8, 22),
+    ).model_dump(by_alias=True)
+
+    assert payload["items"][0]["sourceId"] == item_id
+    assert payload["items"][0]["mutable"] is expected_mutable

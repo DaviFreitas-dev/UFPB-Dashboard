@@ -241,6 +241,36 @@ describe("createRoutineItemAction", () => {
 });
 
 describe("routine lifecycle actions", () => {
+  it("limita a identidade persistente a 512 caracteres nos contratos", () => {
+    const acceptedId = "i".repeat(512);
+    const rejectedId = "i".repeat(513);
+
+    expect(
+      RoutineItemStateResponseSchema.safeParse(
+        confirmedState(true, { id: acceptedId }),
+      ).success,
+    ).toBe(true);
+    expect(
+      DeleteRoutineItemResponseSchema.safeParse({
+        operationId: "routine-request-1",
+        id: acceptedId,
+        deleted: true,
+      }).success,
+    ).toBe(true);
+    expect(
+      RoutineItemStateResponseSchema.safeParse(
+        confirmedState(true, { id: rejectedId }),
+      ).success,
+    ).toBe(false);
+    expect(
+      DeleteRoutineItemResponseSchema.safeParse({
+        operationId: "routine-request-1",
+        id: rejectedId,
+        deleted: true,
+      }).success,
+    ).toBe(false);
+  });
+
   it("aceita contratos legados longos apenas na confirmação de registros existentes", () => {
     const legacyId = `legacy/${"i".repeat(90)}`;
     const legacyTime = `horário legado ${"h".repeat(40)}`;
@@ -348,6 +378,50 @@ describe("routine lifecycle actions", () => {
     expect(revalidatePath.mock.calls).toEqual([["/rotina"], ["/"]]);
   });
 
+  it("altera uma identidade persistente no teto seguro", async () => {
+    const itemId = "i".repeat(512);
+    vi.mocked(requestNexoApi).mockResolvedValue(
+      confirmedState(true, { id: itemId }),
+    );
+
+    const state = await setRoutineItemCompletedAction(
+      initialInlineMutationState,
+      stateForm("true", itemId),
+    );
+
+    expect(requestNexoApi).toHaveBeenCalledWith(
+      `/v1/routine-items/${itemId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ completed: true }),
+      },
+      RoutineItemStateResponseSchema,
+    );
+    expect(state.status).toBe("success");
+    expect(revalidatePath.mock.calls).toEqual([["/rotina"], ["/"]]);
+  });
+
+  it("recusa identidades acima do teto antes da API", async () => {
+    const itemId = "i".repeat(513);
+
+    const state = await setRoutineItemCompletedAction(
+      initialInlineMutationState,
+      stateForm("true", itemId),
+    );
+    const deleteState = await deleteRoutineItemAction(
+      initialInlineMutationState,
+      deleteForm(itemId),
+    );
+
+    expect(state).toEqual({
+      status: "error",
+      message: "Revise os dados do compromisso.",
+    });
+    expect(deleteState).toEqual(state);
+    expect(requestNexoApi).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
   it("não revalida uma resposta com estado divergente", async () => {
     vi.mocked(requestNexoApi).mockResolvedValue(confirmedState(false));
 
@@ -402,6 +476,28 @@ describe("routine lifecycle actions", () => {
 
     expect(requestNexoApi).toHaveBeenCalledWith(
       `/v1/routine-items/${encodeURIComponent(legacyId)}`,
+      { method: "DELETE" },
+      DeleteRoutineItemResponseSchema,
+    );
+    expect(state.status).toBe("success");
+    expect(revalidatePath.mock.calls).toEqual([["/rotina"], ["/"]]);
+  });
+
+  it("exclui uma identidade persistente no teto seguro", async () => {
+    const itemId = "i".repeat(512);
+    vi.mocked(requestNexoApi).mockResolvedValue({
+      operationId: "routine-request-1",
+      id: itemId,
+      deleted: true,
+    });
+
+    const state = await deleteRoutineItemAction(
+      initialInlineMutationState,
+      deleteForm(itemId),
+    );
+
+    expect(requestNexoApi).toHaveBeenCalledWith(
+      `/v1/routine-items/${itemId}`,
       { method: "DELETE" },
       DeleteRoutineItemResponseSchema,
     );

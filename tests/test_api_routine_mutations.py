@@ -2,6 +2,7 @@ import json
 import logging
 from contextlib import contextmanager
 from datetime import date
+from urllib.parse import quote
 
 import pytest
 from fastapi.testclient import TestClient
@@ -330,6 +331,119 @@ def test_routine_patch_uses_desired_state_lock_and_cache(monkeypatch):
     ]
 
 
+def test_routine_patch_preserves_an_opaque_id_with_encoded_slashes(monkeypatch):
+    enable_mutations(monkeypatch)
+    opaque_id = "legacy/folder/item"
+    received = []
+
+    def set_completed(item_id, completed):
+        received.append((item_id, completed))
+        return {**routine_record("Concluída"), "id": item_id}, True
+
+    monkeypatch.setattr(routine, "set_completed", set_completed)
+    monkeypatch.setattr(sheets, "clear_dashboard_cache", lambda: None)
+
+    response = client.patch(
+        f"/v1/routine-items/{quote(opaque_id, safe='')}",
+        json={"completed": True},
+        headers=HEADERS,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["item"]["id"] == opaque_id
+    assert received == [(opaque_id, True)]
+
+
+def test_routine_patch_reports_missing_opaque_id_with_encoded_slashes(
+    monkeypatch,
+):
+    enable_mutations(monkeypatch)
+    opaque_id = "missing/folder/item"
+    received = []
+
+    def set_completed(item_id, completed):
+        received.append((item_id, completed))
+        return None, False
+
+    monkeypatch.setattr(routine, "set_completed", set_completed)
+    monkeypatch.setattr(
+        sheets,
+        "clear_dashboard_cache",
+        lambda: pytest.fail("missing item must not clear cache"),
+    )
+
+    response = client.patch(
+        f"/v1/routine-items/{quote(opaque_id, safe='')}",
+        json={"completed": True},
+        headers=HEADERS,
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "record_not_found"
+    assert received == [(opaque_id, True)]
+
+
+def test_routine_patch_accepts_an_existing_id_at_the_safe_limit(monkeypatch):
+    enable_mutations(monkeypatch)
+    item_id = "i" * 512
+    received = []
+
+    def set_completed(candidate, completed):
+        received.append((candidate, completed))
+        return {**routine_record("Concluída"), "id": candidate}, True
+
+    monkeypatch.setattr(routine, "set_completed", set_completed)
+    monkeypatch.setattr(sheets, "clear_dashboard_cache", lambda: None)
+
+    response = client.patch(
+        f"/v1/routine-items/{item_id}",
+        json={"completed": True},
+        headers=HEADERS,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["item"]["id"] == item_id
+    assert received == [(item_id, True)]
+
+
+@pytest.mark.parametrize("method", ["patch", "delete"])
+def test_routine_item_routes_reject_ids_over_the_safe_limit_before_domain(
+    monkeypatch,
+    method,
+):
+    enable_mutations(monkeypatch)
+    forbid_domain_calls(monkeypatch)
+
+    response = client.request(
+        method.upper(),
+        f"/v1/routine-items/{'i' * 513}",
+        json={"completed": True} if method == "patch" else None,
+        headers=HEADERS,
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_request"
+
+
+@pytest.mark.parametrize("method", ["patch", "delete"])
+def test_routine_item_routes_reject_blank_ids_before_domain(
+    monkeypatch,
+    method,
+):
+    enable_mutations(monkeypatch)
+    forbid_domain_calls(monkeypatch)
+
+    response = client.request(
+        method.upper(),
+        "/v1/routine-items/%20%20",
+        json={"completed": True} if method == "patch" else None,
+        headers=HEADERS,
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_request"
+
+
 def test_persistent_legacy_item_without_time_or_status_mutates_safely_once(
     monkeypatch,
 ):
@@ -469,6 +583,82 @@ def test_routine_delete_is_repeatable_and_clears_cache_each_time(monkeypatch):
     assert clears == [True, True]
 
 
+def test_routine_delete_preserves_an_opaque_id_with_encoded_slashes(monkeypatch):
+    enable_mutations(monkeypatch)
+    opaque_id = "legacy/folder/item"
+    received = []
+    results = iter([True, False])
+
+    def remove(item_id):
+        received.append(item_id)
+        return next(results)
+
+    monkeypatch.setattr(routine, "remove", remove)
+    monkeypatch.setattr(sheets, "clear_dashboard_cache", lambda: None)
+
+    first = client.delete(
+        f"/v1/routine-items/{quote(opaque_id, safe='')}",
+        headers=HEADERS,
+    )
+    replay = client.delete(
+        f"/v1/routine-items/{quote(opaque_id, safe='')}",
+        headers=HEADERS,
+    )
+
+    assert first.status_code == replay.status_code == 200
+    assert first.json() == {
+        "operationId": "routine-request-1",
+        "id": opaque_id,
+        "deleted": True,
+    }
+    assert replay.json() == {
+        "operationId": "routine-request-1",
+        "id": opaque_id,
+        "deleted": False,
+    }
+    assert received == [opaque_id, opaque_id]
+
+
+@pytest.mark.parametrize("method", ["patch", "delete"])
+def test_routine_item_path_does_not_swallow_collection_route(
+    monkeypatch,
+    method,
+):
+    enable_mutations(monkeypatch)
+    forbid_domain_calls(monkeypatch)
+
+    response = client.request(
+        method.upper(),
+        "/v1/routine-items",
+        json={"completed": True} if method == "patch" else None,
+        headers=HEADERS,
+    )
+
+    assert response.status_code == 405
+
+
+def test_opaque_routine_id_stays_structured_in_the_audit_log(
+    monkeypatch,
+    caplog,
+):
+    enable_mutations(monkeypatch)
+    opaque_id = 'legacy/folder/"quoted"'
+    caplog.set_level(logging.INFO, logger=mutation_audit.__name__)
+    monkeypatch.setattr(routine, "remove", lambda _item_id: False)
+    monkeypatch.setattr(sheets, "clear_dashboard_cache", lambda: None)
+
+    response = client.delete(
+        f"/v1/routine-items/{quote(opaque_id, safe='')}",
+        headers=HEADERS,
+    )
+
+    assert response.status_code == 200
+    events = structured_mutation_events(caplog)
+    assert len(events) == 1
+    assert events[0]["resource_id"] == opaque_id
+    assert events[0]["route"] == "/v1/routine-items/{item_id}"
+
+
 def test_routine_mutations_log_safe_fields_only(monkeypatch, caplog):
     enable_mutations(monkeypatch)
     caplog.set_level(logging.INFO, logger=mutation_audit.__name__)
@@ -531,3 +721,13 @@ def test_openapi_declares_routine_mutation_contracts():
     assert set(request_schema["required"]) == {"id", "date", "time", "title"}
     assert request_schema["properties"]["id"]["format"] == "uuid"
     assert request_schema["properties"]["date"]["format"] == "date"
+    for method in ("patch", "delete"):
+        item_id_parameter = next(
+            parameter
+            for parameter in paths["/v1/routine-items/{item_id}"][method][
+                "parameters"
+            ]
+            if parameter["name"] == "item_id"
+        )
+        assert item_id_parameter["schema"]["minLength"] == 1
+        assert item_id_parameter["schema"]["maxLength"] == 512

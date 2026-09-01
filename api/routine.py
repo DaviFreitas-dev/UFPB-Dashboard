@@ -13,6 +13,9 @@ from api.sheets import read_dashboard_tables
 from modules.config import WEEKDAYS
 
 
+MAX_ROUTINE_ITEM_ID_LENGTH = 512
+
+
 def _time_key(item):
     parts = item.time.split(":", 1)
     try:
@@ -66,7 +69,10 @@ def _items(tables, reference):
                 category="Avulso",
                 kind="custom",
                 completed=_completed(row.get("status")),
-                mutable=bool(source_id),
+                mutable=(
+                    bool(source_id)
+                    and len(source_id) <= MAX_ROUTINE_ITEM_ID_LENGTH
+                ),
             )
         )
 
