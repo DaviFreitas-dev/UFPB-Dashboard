@@ -1,113 +1,260 @@
+import uuid
 from datetime import date, timedelta
 
-from modules.database import append_record, new_id, records, update_record
-from modules.gamification import award_xp_once
+from modules.database import (
+    append_record,
+    new_id,
+    records,
+    update_record,
+    write_values_batch,
+)
+from modules.gamification import award_xp_once, xp_write_lock
 
 
-def active_configs():
-    return [
-        row
-        for row in records("HabitosConfig")
-        if row.get("ativo") == "Sim"
-    ]
+HABIT_LOG_NAMESPACE = uuid.UUID("698cd68b-c9a8-4f34-b527-f6809e2d3f10")
 
 
-def add(name):
-    rows = records("HabitosConfig")
-    existing = next(
+def _normalized_name(value):
+    return " ".join(str(value or "").split())
+
+
+def _name_key(value):
+    return _normalized_name(value).casefold()
+
+
+def _is_yes(value):
+    return str(value or "").strip().casefold() == "sim"
+
+
+def _config_with_id(config_id):
+    wanted = str(config_id or "").strip()
+    if not wanted:
+        return None
+    return next(
         (
             row
-            for row in rows
-            if str(row.get("nome", "")).lower() == name.lower()
+            for row in records("HabitosConfig")
+            if str(row.get("id") or "").strip() == wanted
         ),
         None,
     )
 
-    if existing:
-        if existing.get("ativo") != "Sim":
-            update_record("HabitosConfig", existing["id"], {"ativo": "Sim"})
-            return True
-        return False
 
-    append_record("HabitosConfig", [new_id(), name, "Sim"])
-    return True
+def _daily_record(config, target_date, log=None):
+    config_id = str(config.get("id") or "").strip()
+    name = _normalized_name(config.get("nome"))
+    log_id = str(log.get("id") or "").strip() or None if log else None
+    return {
+        "id": log_id,
+        "config_id": config_id,
+        "data": str(target_date),
+        "habito": name,
+        "feito": "Sim" if log and _is_yes(log.get("feito")) else "Não",
+    }
 
 
-def archive(config_id):
-    return update_record("HabitosConfig", config_id, {"ativo": "Não"})
+def _log_for(logs, name, target_date):
+    name_key = _name_key(name)
+    target = str(target_date)
+    return next(
+        (
+            row
+            for row in logs
+            if str(row.get("data")) == target
+            and _name_key(row.get("habito")) == name_key
+        ),
+        None,
+    )
+
+
+def _deterministic_log_id(config_id, target_date):
+    return str(uuid.uuid5(HABIT_LOG_NAMESPACE, f"{config_id}:{target_date}"))
+
+
+def active_configs():
+    return [row for row in records("HabitosConfig") if _is_yes(row.get("ativo"))]
+
+
+def records_for_date(target_date):
+    target = str(target_date)
+    logs = records("Habitos")
+    result = []
+    seen = set()
+    for config in active_configs():
+        name = _normalized_name(config.get("nome"))
+        key = _name_key(name)
+        if not name or key in seen:
+            continue
+        seen.add(key)
+        result.append(_daily_record(config, target, _log_for(logs, name, target)))
+    return result
 
 
 def today():
-    configs = active_configs()
-    logs = records("Habitos")
-    today_text = str(date.today())
-    today_logs = {
-        row.get("habito"): row
-        for row in logs
-        if str(row.get("data")) == today_text
-    }
+    return records_for_date(date.today())
 
-    for habit in configs:
-        name = habit.get("nome")
-        if not name or name in today_logs:
-            continue
 
-        new_log = {
-            "id": new_id(),
-            "data": today_text,
-            "habito": name,
-            "feito": "Não",
-        }
-        append_record(
-            "Habitos",
-            [
-                new_log["id"],
-                new_log["data"],
-                new_log["habito"],
-                new_log["feito"],
-            ],
+def add(name, item_id=None):
+    name_text = _normalized_name(name)
+    if not name_text:
+        raise ValueError("O nome do hábito é obrigatório.")
+
+    with xp_write_lock():
+        existing = next(
+            (
+                row
+                for row in records("HabitosConfig")
+                if _name_key(row.get("nome")) == _name_key(name_text)
+            ),
+            None,
         )
-        today_logs[name] = new_log
+        if existing is not None:
+            if _is_yes(existing.get("ativo")):
+                return existing, False, False
+            persisted_id = str(existing.get("id") or "")
+            if not persisted_id.strip() or not update_record(
+                "HabitosConfig", persisted_id, {"ativo": "Sim"}
+            ):
+                raise RuntimeError("Não foi possível reativar o hábito.")
+            return {**existing, "ativo": "Sim"}, False, True
 
-    return [
-        today_logs[config["nome"]]
-        for config in configs
-        if config.get("nome") in today_logs
-    ]
+        record_id = str(item_id or new_id()).strip()
+        if not record_id:
+            raise ValueError("O hábito precisa de um identificador.")
+        record = {"id": record_id, "nome": name_text, "ativo": "Sim"}
+        append_record(
+            "HabitosConfig",
+            [record["id"], record["nome"], record["ativo"]],
+            value_input_option="RAW",
+        )
+        return record, True, False
 
 
-def toggle(log_id, done):
-    updated = update_record(
-        "Habitos",
-        log_id,
-        {"feito": "Sim" if done else "Não"},
+def set_active(config_id, active):
+    normalized_id = str(config_id or "").strip()
+    with xp_write_lock():
+        current = _config_with_id(normalized_id)
+        if current is None:
+            return None, False
+        target = "Sim" if active else "Não"
+        if str(current.get("ativo") or "").strip().casefold() == target.casefold():
+            return {**current, "id": normalized_id, "ativo": target}, False
+        persisted_id = str(current.get("id") or "")
+        if not update_record("HabitosConfig", persisted_id, {"ativo": target}):
+            return None, False
+        return {**current, "id": normalized_id, "ativo": target}, True
+
+
+def archive(config_id):
+    _, changed = set_active(config_id, False)
+    return changed
+
+
+def _update_legacy_log(logs, current, log_id, target_date, name, target):
+    row_number = logs.index(current) + 2
+    write_values_batch(
+        [
+            {
+                "sheet": "Habitos",
+                "range": f"A{row_number}:D{row_number}",
+                "values": [[log_id, str(target_date), name, target]],
+            }
+        ]
     )
 
-    if updated and done:
-        award_xp_once(
-            f"habit:{log_id}",
-            10,
-            "habito",
-            "Hábito concluído",
-        )
+
+def set_completed(config_id, target_date, completed):
+    normalized_id = str(config_id or "").strip()
+    with xp_write_lock():
+        config = _config_with_id(normalized_id)
+        if config is None:
+            return None, False
+
+        target_date_text = str(target_date)
+        name = _normalized_name(config.get("nome"))
+        logs = records("Habitos")
+        current = _log_for(logs, name, target_date_text)
+        if current is None:
+            if not completed:
+                return _daily_record(config, target_date_text), False
+            log_id = _deterministic_log_id(normalized_id, target_date_text)
+            confirmed = {
+                "id": log_id,
+                "config_id": normalized_id,
+                "data": target_date_text,
+                "habito": name,
+                "feito": "Sim",
+            }
+            append_record(
+                "Habitos",
+                [log_id, target_date_text, name, "Sim"],
+                value_input_option="RAW",
+            )
+            award_xp_once(
+                f"habit:{log_id}",
+                10,
+                "habito",
+                "Hábito concluído",
+            )
+            return confirmed, True
+
+        target = "Sim" if completed else "Não"
+        log_id = str(current.get("id") or "").strip()
+        if not log_id:
+            log_id = _deterministic_log_id(normalized_id, target_date_text)
+        already_target = _is_yes(current.get("feito")) == bool(completed)
+        if not already_target:
+            persisted_id = str(current.get("id") or "")
+            if persisted_id.strip():
+                if not update_record("Habitos", persisted_id, {"feito": target}):
+                    return None, False
+            else:
+                _update_legacy_log(
+                    logs,
+                    current,
+                    log_id,
+                    target_date_text,
+                    name,
+                    target,
+                )
+
+        confirmed = {
+            "id": log_id,
+            "config_id": normalized_id,
+            "data": target_date_text,
+            "habito": name,
+            "feito": target,
+        }
+        if completed:
+            award_xp_once(
+                f"habit:{log_id}",
+                10,
+                "habito",
+                "Hábito concluído",
+            )
+        return confirmed, not already_target
+
+
+def toggle(config_id, done, target_date=None):
+    return set_completed(config_id, target_date or date.today(), done)
 
 
 def streaks(habit_names):
-    wanted = set(habit_names)
-    completed = {name: set() for name in wanted}
+    wanted = {_name_key(name): _normalized_name(name) for name in habit_names}
+    completed = {key: set() for key in wanted}
 
     for row in records("Habitos"):
-        name = row.get("habito")
-        if name not in wanted or row.get("feito") != "Sim":
+        key = _name_key(row.get("habito"))
+        if key not in wanted or not _is_yes(row.get("feito")):
             continue
         try:
-            completed[name].add(date.fromisoformat(str(row.get("data"))))
+            completed[key].add(date.fromisoformat(str(row.get("data"))))
         except (TypeError, ValueError):
             continue
 
     result = {}
-
-    for name, completed_days in completed.items():
+    for key, completed_days in completed.items():
+        name = wanted[key]
         if not completed_days:
             result[name] = 0
             continue
@@ -120,7 +267,5 @@ def streaks(habit_names):
         while cursor in completed_days:
             count += 1
             cursor -= timedelta(days=1)
-
         result[name] = count
-
     return result

@@ -49,5 +49,11 @@ describe("isTodayDashboard", () => {
     expect(isTodayDashboard({ ...dashboard, agenda: [{ id: "sem-campos" }] })).toBe(
       false,
     );
+    expect(
+      isTodayDashboard({
+        ...dashboard,
+        habits: [{ ...dashboard.habits[0], mutable: undefined }],
+      }),
+    ).toBe(false);
   });
 });

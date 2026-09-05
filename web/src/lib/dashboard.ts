@@ -59,9 +59,12 @@ export type Reading = {
 };
 
 export type Habit = {
-  id: string;
+  configId: string;
+  logId: string | null;
   title: string;
   completed: boolean;
+  streakDays: number;
+  mutable: boolean;
 };
 
 export type ActivityDay = {
@@ -247,9 +250,12 @@ function isReading(value: unknown): value is Reading {
 function isHabit(value: unknown): value is Habit {
   return (
     isRecord(value) &&
-    isString(value.id) &&
+    isString(value.configId) &&
+    (value.logId === null || isString(value.logId)) &&
     isString(value.title) &&
-    isBoolean(value.completed)
+    isBoolean(value.completed) &&
+    isNumber(value.streakDays) &&
+    isBoolean(value.mutable)
   );
 }
 

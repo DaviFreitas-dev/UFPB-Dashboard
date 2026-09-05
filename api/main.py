@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, Query, status
 
 from api.dashboard import load_today_dashboard
+from api.habit_mutations import router as habit_mutations_router
 from api.models import PlanningDashboard, RoutineDashboard, TodayDashboard
 from api.mutations import install_mutation_support
 from api.personal import load_personal_workspace
@@ -31,6 +32,7 @@ app = FastAPI(
 install_mutation_support(app)
 app.include_router(task_mutations_router)
 app.include_router(routine_mutations_router)
+app.include_router(habit_mutations_router)
 
 
 @app.get("/health", tags=["sistema"])

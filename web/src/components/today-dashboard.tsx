@@ -320,7 +320,7 @@ export function TodayDashboard({ dashboard, source }: TodayDashboardProps) {
               <ProgressLine value={ratio(completedHabits, dashboard.habits.length)} />
               <div className={styles.habitList}>
                 {dashboard.habits.map((habit) => (
-                  <span key={habit.id}>
+                  <span key={habit.configId || habit.title}>
                     {habit.completed ? (
                       <Check aria-hidden="true" size={13} />
                     ) : (

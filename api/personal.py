@@ -25,6 +25,22 @@ from api.workspace_models import (
 )
 
 
+MAX_HABIT_CONFIG_ID_LENGTH = 512
+
+
+def _safe_habit_config_id(value):
+    config_id = _text(value)
+    return (
+        bool(config_id)
+        and len(config_id) <= MAX_HABIT_CONFIG_ID_LENGTH
+        and config_id not in {".", ".."}
+    )
+
+
+def _habit_name_key(value):
+    return " ".join(_text(value).split()).casefold()
+
+
 def _tasks(tables, reference):
     items = []
     for index, row in enumerate(_rows(tables, "Tarefas")):
@@ -51,7 +67,7 @@ def _habit_streak(rows, name, reference):
     completed_days = {
         day
         for row in rows
-        if _text(row.get("habito")) == name
+        if _habit_name_key(row.get("habito")) == _habit_name_key(name)
         and _completed(row.get("feito"))
         and (day := _date(row.get("data"))) is not None
     }
@@ -68,7 +84,7 @@ def _habit_streak(rows, name, reference):
 def _habits(tables, reference):
     rows = _rows(tables, "Habitos")
     logs = {
-        _text(row.get("habito")): row
+        _habit_name_key(row.get("habito")): row
         for row in rows
         if _date(row.get("data")) == reference
     }
@@ -81,14 +97,16 @@ def _habits(tables, reference):
         if not name or name.casefold() in seen:
             continue
         seen.add(name.casefold())
-        log = logs.get(name)
+        log = logs.get(_habit_name_key(name))
+        config_id = _text(config.get("id"))
         items.append(
             PersonalHabit(
-                config_id=_row_id(config, "habit-config", index),
+                config_id=config_id,
                 log_id=_text(log.get("id")) if log and _text(log.get("id")) else None,
                 title=name,
                 completed=_completed(log.get("feito")) if log else False,
                 streak_days=_habit_streak(rows, name, reference),
+                mutable=_safe_habit_config_id(config_id),
             )
         )
     return HabitCollection(

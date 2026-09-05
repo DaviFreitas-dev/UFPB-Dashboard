@@ -119,9 +119,9 @@ export function createDemoDashboard(reference = new Date()): TodayDashboard {
       dailyTarget: 20,
     },
     habits: [
-      { id: "habit-1", title: "Ler 20 páginas", completed: true },
-      { id: "habit-2", title: "Revisar o dia", completed: false },
-      { id: "habit-3", title: "Alongar", completed: true },
+      { configId: "habit-1", logId: "habit-log-1", title: "Ler 20 páginas", completed: true, streakDays: 6, mutable: false },
+      { configId: "habit-2", logId: null, title: "Revisar o dia", completed: false, streakDays: 3, mutable: false },
+      { configId: "habit-3", logId: "habit-log-3", title: "Alongar", completed: true, streakDays: 9, mutable: false },
     ],
     physicalActivity: "Treino de força",
     activity: activityFor(reference),

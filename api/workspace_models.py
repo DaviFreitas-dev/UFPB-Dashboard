@@ -111,6 +111,7 @@ class PersonalHabit(ApiModel):
     title: str
     completed: bool
     streak_days: int
+    mutable: bool
 
 
 class HabitCollection(ApiModel):

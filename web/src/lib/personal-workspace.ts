@@ -14,6 +14,7 @@ export type PersonalHabit = {
   title: string;
   completed: boolean;
   streakDays: number;
+  mutable: boolean;
 };
 
 export type PersonalReading = {
@@ -88,7 +89,8 @@ function isPersonalHabit(value: unknown): value is PersonalHabit {
     (value.logId === null || isString(value.logId)) &&
     isString(value.title) &&
     isBoolean(value.completed) &&
-    isNumber(value.streakDays)
+    isNumber(value.streakDays) &&
+    isBoolean(value.mutable)
   );
 }
 

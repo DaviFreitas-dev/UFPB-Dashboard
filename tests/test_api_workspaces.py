@@ -255,6 +255,7 @@ def test_personal_workspace_projects_daily_items_without_creating_logs():
             "title": "Ler",
             "completed": True,
             "streakDays": 3,
+            "mutable": True,
         },
         {
             "configId": "hc2",
@@ -262,6 +263,7 @@ def test_personal_workspace_projects_daily_items_without_creating_logs():
             "title": "Alongar",
             "completed": False,
             "streakDays": 0,
+            "mutable": True,
         },
     ]
     assert payload["reading"]["items"][0]["progress"] == 0.5

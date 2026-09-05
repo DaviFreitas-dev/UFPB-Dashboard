@@ -36,6 +36,7 @@ const workspace = {
         title: "Ler",
         completed: false,
         streakDays: 4,
+        mutable: true,
       },
     ],
   },
@@ -71,6 +72,18 @@ describe("personal workspace contract", () => {
         habits: {
           ...workspace.habits,
           items: [{ ...workspace.habits.items[0], logId: undefined }],
+        },
+      }),
+    ).toBe(false);
+  });
+
+  it("recusa um hábito sem mutabilidade persistente explícita", () => {
+    expect(
+      isPersonalWorkspace({
+        ...workspace,
+        habits: {
+          ...workspace.habits,
+          items: [{ ...workspace.habits.items[0], mutable: undefined }],
         },
       }),
     ).toBe(false);

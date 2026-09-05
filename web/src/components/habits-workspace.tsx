@@ -3,9 +3,23 @@ import { Check, Circle, Flame } from "lucide-react";
 import { ratio } from "@/lib/dashboard";
 import type { PersonalWorkspaceResult } from "@/lib/personal-workspace";
 import { PersonalWorkspaceFrame } from "./personal-workspace-frame";
+import {
+  HabitControls,
+  HabitCreateForm,
+} from "./personal-actions/habit-controls";
 import styles from "./personal-workspace.module.css";
 
-export function HabitsWorkspace({ workspace, source }: PersonalWorkspaceResult) {
+type HabitsWorkspaceProps = PersonalWorkspaceResult & {
+  canMutate: boolean;
+  initialItemId: string;
+};
+
+export function HabitsWorkspace({
+  workspace,
+  source,
+  canMutate,
+  initialItemId,
+}: HabitsWorkspaceProps) {
   const progress = Math.round(ratio(workspace.habits.completed, workspace.habits.total) * 100);
 
   return (
@@ -30,6 +44,14 @@ export function HabitsWorkspace({ workspace, source }: PersonalWorkspaceResult) 
         <strong className={styles.summaryValue}>{progress}%</strong>
       </section>
 
+      {canMutate ? (
+        <HabitCreateForm initialItemId={initialItemId} />
+      ) : source === "api" ? (
+        <p className={styles.writesUnavailable}>
+          As alterações ainda não estão disponíveis nesta versão.
+        </p>
+      ) : null}
+
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
           <h2>Hoje</h2>
@@ -39,8 +61,8 @@ export function HabitsWorkspace({ workspace, source }: PersonalWorkspaceResult) 
         </div>
         {workspace.habits.items.length ? (
           <div className={styles.listPanel}>
-            {workspace.habits.items.map((habit) => (
-              <article className={habit.completed ? styles.itemDone : styles.item} key={habit.configId}>
+            {workspace.habits.items.map((habit, index) => (
+              <article className={habit.completed ? styles.itemDone : styles.item} key={`${habit.configId || habit.title}:${index}`}>
                 <span className={styles.stateIcon} aria-label={habit.completed ? "Concluído" : "Pendente"}>
                   {habit.completed ? <Check aria-hidden="true" size={14} /> : <Circle aria-hidden="true" size={12} />}
                 </span>
@@ -51,6 +73,11 @@ export function HabitsWorkspace({ workspace, source }: PersonalWorkspaceResult) 
                 <span className={habit.completed ? styles.donePill : styles.openPill}>
                   {habit.completed ? "Feito" : "Em aberto"}
                 </span>
+                <HabitControls
+                  canMutate={source === "api" && canMutate}
+                  date={workspace.date}
+                  habit={habit}
+                />
               </article>
             ))}
           </div>

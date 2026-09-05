@@ -23,11 +23,16 @@ def render():
         ):
             if not name.strip():
                 st.warning("Digite o nome do hábito.")
-            elif add(name.strip()):
-                st.success("Hábito criado.")
-                st.rerun()
             else:
-                st.info("Esse hábito já está ativo.")
+                _, created, reactivated = add(name.strip())
+                if created:
+                    st.success("Hábito criado.")
+                    st.rerun()
+                elif reactivated:
+                    st.success("Hábito reativado.")
+                    st.rerun()
+                else:
+                    st.info("Esse hábito já está ativo.")
 
     section("Hoje")
     habits = today()
@@ -49,11 +54,12 @@ def render():
             new_value = st.checkbox(
                 f"{habit['habito']} · 🔥 sequência de {habit_streak} dias",
                 value=checked,
-                key=f"habit_{habit['id']}",
+                key=f"habit_{habit['config_id']}",
+                disabled=not bool(habit.get("config_id")),
             )
 
             if new_value != checked:
-                toggle(habit["id"], new_value)
+                toggle(habit["config_id"], new_value)
                 st.rerun()
 
     st.write("")
@@ -68,6 +74,10 @@ def render():
                 format_func=lambda item: item["nome"],
             )
             if st.button("Arquivar hábito", use_container_width=True):
-                archive(selected["id"])
-                st.success("Hábito arquivado; o histórico foi mantido.")
-                st.rerun()
+                config_id = str(selected.get("id") or "").strip()
+                if not config_id:
+                    st.warning("Disponível após a atualização dos dados.")
+                else:
+                    archive(config_id)
+                    st.success("Hábito arquivado; o histórico foi mantido.")
+                    st.rerun()

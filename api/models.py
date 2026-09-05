@@ -72,9 +72,12 @@ class Reading(ApiModel):
 
 
 class Habit(ApiModel):
-    id: str
+    config_id: str
+    log_id: str | None
     title: str
     completed: bool
+    streak_days: int
+    mutable: bool
 
 
 class ActivityDay(ApiModel):

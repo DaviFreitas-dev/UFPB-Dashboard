@@ -21,6 +21,7 @@ export function createDemoPersonalWorkspace(reference = new Date()): PersonalWor
       title: "Ler 20 páginas",
       completed: true,
       streakDays: 6,
+      mutable: false,
     },
     {
       configId: "habit-config-2",
@@ -28,6 +29,7 @@ export function createDemoPersonalWorkspace(reference = new Date()): PersonalWor
       title: "Alongar",
       completed: false,
       streakDays: 3,
+      mutable: false,
     },
     {
       configId: "habit-config-3",
@@ -35,6 +37,7 @@ export function createDemoPersonalWorkspace(reference = new Date()): PersonalWor
       title: "Revisar o dia",
       completed: true,
       streakDays: 9,
+      mutable: false,
     },
   ];
 

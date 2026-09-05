@@ -305,9 +305,26 @@ def _reading(tables):
     )
 
 
+def _habit_streak(rows, name, reference):
+    name_key = " ".join(name.split()).casefold()
+    completed_days = {
+        day
+        for row in rows
+        if " ".join(_text(row.get("habito")).split()).casefold() == name_key
+        and _completed(row.get("feito"))
+        and (day := _date(row.get("data"))) is not None
+    }
+    cursor = reference if reference in completed_days else reference - timedelta(days=1)
+    count = 0
+    while cursor in completed_days:
+        count += 1
+        cursor -= timedelta(days=1)
+    return count
+
+
 def _habits(tables, reference):
     logs = {
-        _text(row.get("habito")): row
+        " ".join(_text(row.get("habito")).split()).casefold(): row
         for row in _rows(tables, "Habitos")
         if _date(row.get("data")) == reference
     }
@@ -318,12 +335,24 @@ def _habits(tables, reference):
         name = _text(config.get("nome"))
         if not name:
             continue
-        log = logs.get(name, {})
+        log = logs.get(" ".join(name.split()).casefold(), {})
+        config_id = _text(config.get("id"))
         result.append(
             Habit(
-                id=_text(log.get("id"), _row_id(config, "habit", index)),
+                config_id=config_id,
+                log_id=_text(log.get("id")) or None,
                 title=name,
                 completed=_completed(log.get("feito")),
+                streak_days=_habit_streak(
+                    _rows(tables, "Habitos"),
+                    name,
+                    reference,
+                ),
+                mutable=(
+                    bool(config_id)
+                    and len(config_id) <= 512
+                    and config_id not in {".", ".."}
+                ),
             )
         )
     return result
