@@ -51,6 +51,8 @@ export type AgendaItem = {
 };
 
 export type Reading = {
+  id: string | null;
+  mutable: boolean;
   title: string;
   author: string;
   currentPage: number;
@@ -236,6 +238,8 @@ function isAgendaItem(value: unknown): value is AgendaItem {
 function isReading(value: unknown): value is Reading {
   return (
     isRecord(value) &&
+    (value.id === null || isString(value.id)) &&
+    isBoolean(value.mutable) &&
     isString(value.title) &&
     isString(value.author) &&
     isNumber(value.currentPage) &&

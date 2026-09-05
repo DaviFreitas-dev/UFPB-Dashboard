@@ -266,6 +266,7 @@ def test_personal_workspace_projects_daily_items_without_creating_logs():
     ]
     assert payload["reading"]["items"][0]["progress"] == 0.5
     assert payload["reading"]["items"][0]["remainingTarget"] == 20
+    assert payload["reading"]["items"][0]["mutable"] is True
     assert payload["activity"]["items"] == [
         {"id": "a1", "type": "Corrida", "completed": True}
     ]

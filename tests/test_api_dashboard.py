@@ -189,4 +189,6 @@ def test_dashboard_tolerates_incomplete_legacy_rows():
     assert payload["user"]["xp"] == 0
     assert payload["priorities"][0]["title"] == "Tarefa sem título"
     assert payload["reading"]["totalPages"] == 1
+    assert payload["reading"]["id"] == "book-1"
+    assert payload["reading"]["mutable"] is False
     assert payload["physicalActivity"] is None

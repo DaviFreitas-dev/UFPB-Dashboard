@@ -1,6 +1,6 @@
 import streamlit as st
 
-from modules.reading import add, all_books, remaining_today, remove, update
+from modules.reading import add, all_books, is_safe_reading_item_id, remaining_today, remove, update
 from modules.ui import header, section
 
 
@@ -13,8 +13,8 @@ def render():
     with st.container(border=True):
         section("Adicionar livro")
 
-        title = st.text_input("Título")
-        author = st.text_input("Autor")
+        title = st.text_input("Título", max_chars=160)
+        author = st.text_input("Autor", max_chars=120)
 
         col1, col2 = st.columns(2)
         with col1:
@@ -51,8 +51,8 @@ def render():
         with st.container(border=True):
             title_col, status_col = st.columns([4, 1])
             with title_col:
-                st.subheader(book["titulo"])
-                st.caption(book["autor"] or "Autor não informado")
+                st.subheader(book.get("titulo") or "Livro sem título")
+                st.caption(book.get("autor") or "Autor não informado")
             with status_col:
                 st.caption(status)
 
@@ -63,6 +63,10 @@ def render():
                 st.info(
                     f"Meta de hoje: {daily_target} {page_label}."
                 )
+
+            if not is_safe_reading_item_id(book.get("id")):
+                st.caption("Controles indisponíveis para este registro antigo.")
+                continue
 
             page = st.number_input(
                 "Página atual",

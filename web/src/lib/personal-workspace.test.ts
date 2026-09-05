@@ -51,6 +51,7 @@ const workspace = {
         remainingTarget: 20,
         status: "Lendo",
         progress: 0.35,
+        mutable: true,
       },
     ],
   },
@@ -97,5 +98,12 @@ describe("personal workspace contract", () => {
         },
       }),
     ).toBe(false);
+  });
+
+  it("recusa leitura sem mutabilidade explícita", () => {
+    expect(isPersonalWorkspace({
+      ...workspace,
+      reading: { items: [{ ...workspace.reading.items[0], mutable: undefined }] },
+    })).toBe(false);
   });
 });

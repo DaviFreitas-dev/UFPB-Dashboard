@@ -2,9 +2,13 @@ import { BookOpen, Check } from "lucide-react";
 
 import type { PersonalWorkspaceResult } from "@/lib/personal-workspace";
 import { PersonalWorkspaceFrame } from "./personal-workspace-frame";
+import { ReadingControls, ReadingCreateForm } from "./personal-actions/reading-controls";
 import styles from "./personal-workspace.module.css";
 
-export function ReadingWorkspace({ workspace, source }: PersonalWorkspaceResult) {
+export function ReadingWorkspace({ workspace, source, canMutate = false, initialItemId }: PersonalWorkspaceResult & {
+  canMutate?: boolean;
+  initialItemId?: string;
+}) {
   const inProgress = workspace.reading.items.filter((book) => book.status === "Lendo").length;
 
   return (
@@ -25,6 +29,7 @@ export function ReadingWorkspace({ workspace, source }: PersonalWorkspaceResult)
         </div>
       </section>
 
+      {canMutate && initialItemId ? <ReadingCreateForm initialItemId={initialItemId} /> : null}
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
           <h2>Biblioteca</h2>
@@ -53,6 +58,8 @@ export function ReadingWorkspace({ workspace, source }: PersonalWorkspaceResult)
                     <span>{book.currentPage} de {book.totalPages} páginas</span>
                     <span>{book.remainingTarget} {book.remainingTarget === 1 ? "página" : "páginas"} na meta</span>
                   </div>
+                  <ReadingControls key={`${book.id}:${book.currentPage}:${book.status}`}
+                    book={book} canMutate={canMutate} />
                 </article>
               );
             })}

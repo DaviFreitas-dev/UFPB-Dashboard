@@ -112,6 +112,8 @@ export function createDemoDashboard(reference = new Date()): TodayDashboard {
       },
     ],
     reading: {
+      id: "book-1",
+      mutable: false,
       title: "O homem que calculava",
       author: "Malba Tahan",
       currentPage: 84,

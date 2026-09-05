@@ -23,6 +23,7 @@ from api.workspace_models import (
     ReadingCollection,
     TaskCollection,
 )
+from modules.reading import is_safe_reading_item_id
 
 
 def _tasks(tables, reference):
@@ -105,9 +106,10 @@ def _reading(tables):
         total = max(1, _integer(row.get("total_paginas"), 1))
         current = min(current, total)
         target = max(0, _integer(row.get("meta_diaria")))
+        persisted_id = _text(row.get("id"))
         items.append(
             ReadingBook(
-                id=_row_id(row, "book", index),
+                id=persisted_id or _row_id(row, "book", index),
                 title=_text(row.get("titulo"), "Livro sem título"),
                 author=_text(row.get("autor"), "Autor não informado"),
                 current_page=current,
@@ -116,6 +118,7 @@ def _reading(tables):
                 remaining_target=min(target, max(total - current, 0)),
                 status=_text(row.get("status"), "Lendo"),
                 progress=current / total,
+                mutable=is_safe_reading_item_id(persisted_id),
             )
         )
     return ReadingCollection(items=items)

@@ -18,6 +18,7 @@ from api.models import (
 )
 from api.sheets import read_dashboard_tables
 from modules.config import WEEKDAYS, XP_POR_NIVEL
+from modules.reading import is_safe_reading_item_id
 
 
 def _today():
@@ -286,22 +287,26 @@ def _deadline(tables):
 
 
 def _reading(tables):
-    row = next(
+    indexed_row = next(
         (
-            item
-            for item in _rows(tables, "Leitura")
+            (index, item)
+            for index, item in enumerate(_rows(tables, "Leitura"))
             if _equals(item.get("status"), "Lendo")
         ),
         None,
     )
-    if row is None:
+    if indexed_row is None:
         return None
+    index, row = indexed_row
+    persisted_id = _text(row.get("id"))
     return Reading(
+        id=persisted_id or _row_id(row, "book", index),
         title=_text(row.get("titulo"), "Livro sem título"),
         author=_text(row.get("autor"), "Autor não informado"),
         current_page=max(0, _integer(row.get("pagina_atual"))),
         total_pages=max(1, _integer(row.get("total_paginas"), 1)),
         daily_target=max(0, _integer(row.get("meta_diaria"))),
+        mutable=is_safe_reading_item_id(persisted_id),
     )
 
 
