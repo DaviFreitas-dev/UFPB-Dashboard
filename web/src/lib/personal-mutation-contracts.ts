@@ -139,3 +139,14 @@ export const DeleteBookResponseSchema = z.strictObject({
   id: PersistentBookIdSchema,
   deleted: z.boolean(),
 });
+export const RegisterActivityResponseSchema = z.strictObject({
+  operationId: z.string().min(1).max(80),
+  created: z.boolean(),
+  changed: z.boolean(),
+  activity: z.strictObject({
+    id: z.string().trim().min(1).nullable(),
+    date: z.iso.date(),
+    type: z.string().trim().min(1),
+    completed: z.boolean(),
+  }),
+});

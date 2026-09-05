@@ -2,9 +2,13 @@ import { Check, Circle, Dumbbell } from "lucide-react";
 
 import type { PersonalWorkspaceResult } from "@/lib/personal-workspace";
 import { PersonalWorkspaceFrame } from "./personal-workspace-frame";
+import { ActivityCreateForm } from "./personal-actions/activity-controls";
 import styles from "./personal-workspace.module.css";
 
-export function ActivityWorkspace({ workspace, source }: PersonalWorkspaceResult) {
+export function ActivityWorkspace({ workspace, source, canMutate = false, initialItemId }: PersonalWorkspaceResult & {
+  canMutate?: boolean;
+  initialItemId?: string;
+}) {
   const completed = workspace.activity.items.filter((item) => item.completed).length;
 
   return (
@@ -24,6 +28,9 @@ export function ActivityWorkspace({ workspace, source }: PersonalWorkspaceResult
         </div>
       </section>
 
+      {canMutate && initialItemId ? (
+        <ActivityCreateForm key={workspace.date} initialItemId={initialItemId} selectedDate={workspace.date} />
+      ) : null}
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
           <h2>Registros do dia</h2>
