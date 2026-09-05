@@ -64,11 +64,13 @@ class AgendaItem(Task):
 
 
 class Reading(ApiModel):
+    id: str
     title: str
     author: str
     current_page: int
     total_pages: int
     daily_target: int
+    mutable: bool
 
 
 class Habit(ApiModel):

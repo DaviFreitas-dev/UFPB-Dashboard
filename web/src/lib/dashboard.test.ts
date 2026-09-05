@@ -55,5 +55,9 @@ describe("isTodayDashboard", () => {
         habits: [{ ...dashboard.habits[0], mutable: undefined }],
       }),
     ).toBe(false);
+    expect(isTodayDashboard({
+      ...dashboard,
+      reading: dashboard.reading && { ...dashboard.reading, mutable: undefined },
+    })).toBe(false);
   });
 });

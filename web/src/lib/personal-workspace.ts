@@ -19,6 +19,7 @@ export type PersonalHabit = {
 
 export type PersonalReading = {
   id: string;
+  mutable: boolean;
   title: string;
   author: string;
   currentPage: number;
@@ -98,6 +99,7 @@ function isPersonalReading(value: unknown): value is PersonalReading {
   return (
     isRecord(value) &&
     isString(value.id) &&
+    isBoolean(value.mutable) &&
     isString(value.title) &&
     isString(value.author) &&
     isNumber(value.currentPage) &&

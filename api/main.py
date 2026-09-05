@@ -11,6 +11,7 @@ from api.mutations import install_mutation_support
 from api.personal import load_personal_workspace
 from api.planning import load_planning_dashboard
 from api.profile import load_profile_workspace
+from api.reading_mutations import router as reading_mutations_router
 from api.routine import load_routine_dashboard
 from api.routine_mutations import router as routine_mutations_router
 from api.security import require_api_token
@@ -33,6 +34,7 @@ install_mutation_support(app)
 app.include_router(task_mutations_router)
 app.include_router(routine_mutations_router)
 app.include_router(habit_mutations_router)
+app.include_router(reading_mutations_router)
 
 
 @app.get("/health", tags=["sistema"])

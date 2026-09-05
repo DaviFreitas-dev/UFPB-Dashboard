@@ -273,6 +273,14 @@
 .writesUnavailable { margin-top: 18px; text-align: center; }
 
 .readingGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.readingControls { display: grid; gap: 12px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--color-border); }
+.readingControls .taskControls { justify-content: flex-start; }
+.readingProgressForm { display: flex; flex-wrap: wrap; align-items: end; gap: 9px; }
+.readingProgressForm label { display: grid; gap: 6px; color: var(--color-muted); font-size: 0.65rem; }
+.readingProgressForm input { width: 100px; min-height: 38px; padding: 0 9px; color: var(--color-text); background: var(--color-surface-raised); border: 1px solid var(--color-border); border-radius: 8px; }
+.readingProgressForm button { min-height: 38px; }
+.readingProgressForm input:focus-visible { outline: 2px solid var(--color-accent-soft); outline-offset: 2px; }
+.readingProgressForm button:disabled { opacity: 0.58; cursor: wait; }
 .bookCard { min-height: 204px; display: flex; flex-direction: column; padding: 19px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
 .bookTopline { display: flex; align-items: center; justify-content: space-between; min-height: 20px; color: var(--color-accent-soft); }
 .bookCard > strong { margin-top: 17px; font-size: 0.9rem; font-weight: 680; }

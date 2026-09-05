@@ -130,6 +130,7 @@ class ReadingBook(ApiModel):
     remaining_target: int
     status: str
     progress: float
+    mutable: bool
 
 
 class ReadingCollection(ApiModel):

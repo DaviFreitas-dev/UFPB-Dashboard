@@ -58,6 +58,7 @@ export function createDemoPersonalWorkspace(reference = new Date()): PersonalWor
       items: [
         {
           id: "book-1",
+          mutable: false,
           title: "O homem que calculava",
           author: "Malba Tahan",
           currentPage: 84,
@@ -69,6 +70,7 @@ export function createDemoPersonalWorkspace(reference = new Date()): PersonalWor
         },
         {
           id: "book-2",
+          mutable: false,
           title: "Capitães da Areia",
           author: "Jorge Amado",
           currentPage: 182,
