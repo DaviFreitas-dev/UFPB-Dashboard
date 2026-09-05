@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Query, status
 
+from api.activity_mutations import router as activity_mutations_router
 from api.dashboard import load_today_dashboard
 from api.models import PlanningDashboard, RoutineDashboard, TodayDashboard
 from api.mutations import install_mutation_support
@@ -29,6 +30,7 @@ app = FastAPI(
     version="0.1.0",
 )
 install_mutation_support(app)
+app.include_router(activity_mutations_router)
 app.include_router(task_mutations_router)
 app.include_router(routine_mutations_router)
 

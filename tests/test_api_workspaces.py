@@ -225,6 +225,7 @@ def test_personal_workspace_projects_daily_items_without_creating_logs():
             "Atividade": [
                 {"id": "a1", "data": "2026-08-22", "tipo": "Corrida", "feito": "Sim"},
                 {"id": "a2", "data": "2026-08-22", "feito": "Sim"},
+                {"data": "2026-08-22", "tipo": "Alongamento", "feito": "Sim"},
             ],
         }
     )
@@ -267,7 +268,8 @@ def test_personal_workspace_projects_daily_items_without_creating_logs():
     assert payload["reading"]["items"][0]["progress"] == 0.5
     assert payload["reading"]["items"][0]["remainingTarget"] == 20
     assert payload["activity"]["items"] == [
-        {"id": "a1", "type": "Corrida", "completed": True}
+        {"id": "a1", "type": "Corrida", "completed": True},
+        {"id": "activity-3", "type": "Alongamento", "completed": True},
     ]
 
 
