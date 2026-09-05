@@ -13,6 +13,7 @@ from api.models import (
     Reading,
     Review,
     Task,
+    TodayTask,
     TodayDashboard,
     WeeklyGoal,
 )
@@ -200,11 +201,16 @@ def _tasks_for_date(tables, reference):
         if _date(row.get("data")) != reference:
             continue
         result.append(
-            Task(
+            TodayTask(
                 id=_row_id(row, "task", index),
                 title=_text(row.get("tarefa"), "Tarefa sem título"),
                 category=_text(row.get("categoria"), "Outro"),
                 completed=_completed(row.get("status")),
+                mutable=(
+                    bool(_text(row.get("id")))
+                    and len(_text(row.get("id"))) <= 512
+                    and _text(row.get("id")) not in {".", ".."}
+                ),
             )
         )
     return result
@@ -232,6 +238,9 @@ def _agenda(tables, reference):
                 title=_text(row.get("atividade"), "Atividade sem título"),
                 category=_text(row.get("categoria"), "Agenda"),
                 completed=_completed(checkins.get(item_id, {}).get("status")),
+                kind="fixed",
+                source_id=_text(row.get("id")),
+                mutable=False,
             )
         )
 
@@ -245,6 +254,13 @@ def _agenda(tables, reference):
                 title=_text(row.get("atividade"), "Atividade sem título"),
                 category="Rotina",
                 completed=_completed(row.get("status")),
+                kind="custom",
+                source_id=_text(row.get("id")),
+                mutable=(
+                    bool(_text(row.get("id")))
+                    and len(_text(row.get("id"))) <= 512
+                    and _text(row.get("id")) not in {".", ".."}
+                ),
             )
         )
     return sorted(agenda, key=lambda item: (item.time, item.id))

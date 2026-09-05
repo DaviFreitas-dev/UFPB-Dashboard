@@ -17,7 +17,9 @@ type Book = {
   mutable: boolean;
 };
 
-export function ReadingControls({ book, canMutate }: { book: Book; canMutate: boolean }) {
+export function ReadingControls({ book, canMutate, compact = false }: {
+  book: Book; canMutate: boolean; compact?: boolean;
+}) {
   const [page, setPage] = useState(String(book.currentPage));
   const [confirming, setConfirming] = useState(false);
   const [deleted, setDeleted] = useState(false);
@@ -62,7 +64,7 @@ export function ReadingControls({ book, canMutate }: { book: Book; canMutate: bo
             {book.status === "Concluído" ? "Voltar a ler" : "Concluir"}
           </button>
         </form>
-        {confirming ? (
+        {!compact && (confirming ? (
           <form action={action} className={styles.deleteConfirmation}>
             <span>Excluir {book.title}?</span>
             <input type="hidden" name="id" value={book.id} />
@@ -72,7 +74,7 @@ export function ReadingControls({ book, canMutate }: { book: Book; canMutate: bo
           </form>
         ) : (
           <button disabled={pending} type="button" onClick={() => setConfirming(true)}>Excluir livro</button>
-        )}
+        ))}
       </div>
       <p aria-live="polite" className={styles.formMessage}>{state.message}</p>
     </div>

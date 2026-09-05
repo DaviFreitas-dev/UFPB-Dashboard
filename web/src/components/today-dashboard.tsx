@@ -17,8 +17,18 @@ import {
   type DashboardResult,
 } from "@/lib/dashboard";
 import styles from "./today-dashboard.module.css";
+import { TaskControls } from "./personal-actions/task-controls";
+import { RoutineControls } from "./personal-actions/routine-controls";
+import { HabitControls } from "./personal-actions/habit-controls";
+import { ReadingControls } from "./personal-actions/reading-controls";
+import { ActivityCreateForm } from "./personal-actions/activity-controls";
+import { TaskCreateForm } from "./task-create-form";
 
-type TodayDashboardProps = DashboardResult;
+type TodayDashboardProps = DashboardResult & {
+  canMutate?: boolean;
+  initialTaskId?: string;
+  initialActivityId?: string;
+};
 
 function SectionTitle({ title, meta }: { title: string; meta?: string }) {
   return (
@@ -58,7 +68,9 @@ function weekday(value: string): string {
     .replace(".", "");
 }
 
-export function TodayDashboard({ dashboard, source }: TodayDashboardProps) {
+export function TodayDashboard({ dashboard, source, canMutate = false,
+  initialTaskId, initialActivityId }: TodayDashboardProps) {
+  const writable = source === "api" && canMutate;
   const questionsProgress = ratio(
     dashboard.weeklyQuestions.completed,
     dashboard.weeklyQuestions.target,
@@ -223,7 +235,7 @@ export function TodayDashboard({ dashboard, source }: TodayDashboardProps) {
             <div className={styles.listPanel}>
               {dashboard.priorities.length ? (
                 dashboard.priorities.map((task) => (
-                  <div className={styles.listRow} key={task.id}>
+                  <div className={styles.listRow} key={task.id} role="group" aria-label={task.title}>
                     <span className={task.completed ? styles.checkDone : styles.checkOpen}>
                       {task.completed ? (
                         <Check aria-hidden="true" size={14} strokeWidth={2.4} />
@@ -236,6 +248,7 @@ export function TodayDashboard({ dashboard, source }: TodayDashboardProps) {
                         {task.title}
                       </strong>
                       <span>{task.category}</span>
+                      <TaskControls task={task} canMutate={writable} compact />
                     </div>
                   </div>
                 ))
@@ -243,6 +256,12 @@ export function TodayDashboard({ dashboard, source }: TodayDashboardProps) {
                 <p className={styles.emptyCopy}>Sem prioridades para hoje.</p>
               )}
             </div>
+            {writable && initialTaskId ? (
+              <details className={styles.quickCapture}>
+                <summary>Adicionar tarefa</summary>
+                <TaskCreateForm initialItemId={initialTaskId} selectedDate={dashboard.date} />
+              </details>
+            ) : null}
           </section>
 
           <section className={styles.section}>
@@ -250,12 +269,16 @@ export function TodayDashboard({ dashboard, source }: TodayDashboardProps) {
             <div className={styles.timelinePanel}>
               {dashboard.agenda.length ? (
                 dashboard.agenda.map((item) => (
-                  <div className={styles.timelineRow} key={item.id}>
+                  <div className={styles.timelineRow} key={`${item.kind}:${item.id}`}
+                    role="group" aria-label={item.title}>
                     <time>{item.time}</time>
                     <span className={styles.timelineMarker} />
                     <div>
                       <strong>{item.title}</strong>
-                      <span>{item.category}</span>
+                      <span>{item.kind === "fixed" ? "Agenda fixa" : item.category}</span>
+                      {item.kind === "custom" ? (
+                        <RoutineControls item={item} canMutate={writable} compact />
+                      ) : null}
                     </div>
                   </div>
                 ))
@@ -300,6 +323,8 @@ export function TodayDashboard({ dashboard, source }: TodayDashboardProps) {
                   </span>
                   <span>Meta: {dashboard.reading.dailyTarget}</span>
                 </div>
+                <ReadingControls key={`${dashboard.reading.id}:${dashboard.reading.currentPage}`}
+                  book={{ ...dashboard.reading, status: "Lendo" }} canMutate={writable} compact />
               </div>
             ) : (
               <div className={styles.sidePanel}>
@@ -320,14 +345,15 @@ export function TodayDashboard({ dashboard, source }: TodayDashboardProps) {
               <ProgressLine value={ratio(completedHabits, dashboard.habits.length)} />
               <div className={styles.habitList}>
                 {dashboard.habits.map((habit) => (
-                  <span key={habit.configId || habit.title}>
+                  <div key={habit.configId || habit.title} role="group" aria-label={habit.title}>
                     {habit.completed ? (
                       <Check aria-hidden="true" size={13} />
                     ) : (
                       <Circle aria-hidden="true" size={13} />
                     )}
                     {habit.title}
-                  </span>
+                    <HabitControls habit={habit} date={dashboard.date} canMutate={writable} compact />
+                  </div>
                 ))}
               </div>
               <div className={styles.activityRow}>
@@ -337,6 +363,12 @@ export function TodayDashboard({ dashboard, source }: TodayDashboardProps) {
                   <span>Atividade física</span>
                 </div>
               </div>
+              {writable && initialActivityId ? (
+                <details className={styles.quickCapture}>
+                  <summary>Registrar atividade</summary>
+                  <ActivityCreateForm initialItemId={initialActivityId} selectedDate={dashboard.date} />
+                </details>
+              ) : null}
             </div>
           </section>
         </aside>
@@ -344,7 +376,7 @@ export function TodayDashboard({ dashboard, source }: TodayDashboardProps) {
 
       <footer className={styles.footerNote}>
         <CalendarClock aria-hidden="true" size={14} />
-        <span>Primeira etapa da nova interface. Nenhuma escrita é enviada ao Google Sheets.</span>
+        <span>{writable ? "Dados conectados ao NEXO." : "Alterações indisponíveis nesta versão."}</span>
       </footer>
     </div>
   );

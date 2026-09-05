@@ -42,7 +42,12 @@ export type Task = {
   completed: boolean;
 };
 
+export type TodayTask = Task & { mutable: boolean };
+
 export type AgendaItem = {
+  sourceId: string;
+  kind: "fixed" | "custom";
+  mutable: boolean;
   id: string;
   time: string;
   title: string;
@@ -81,7 +86,7 @@ export type TodayDashboard = {
   focus: FocusItem | null;
   deadline: Deadline | null;
   reviews: Review[];
-  priorities: Task[];
+  priorities: TodayTask[];
   agenda: AgendaItem[];
   tomorrow: Task[];
   reading: Reading | null;
@@ -234,6 +239,9 @@ function isAgendaItem(value: unknown): value is AgendaItem {
   return (
     isRecord(value) &&
     isString(value.time) &&
+    isString(value.sourceId) &&
+    (value.kind === "fixed" || value.kind === "custom") &&
+    isBoolean(value.mutable) &&
     isTask(value)
   );
 }
@@ -283,7 +291,8 @@ export function isTodayDashboard(value: unknown): value is TodayDashboard {
     (value.focus === null || isFocusItem(value.focus)) &&
     (value.deadline === null || isDeadline(value.deadline)) &&
     isArrayOf(value.reviews, isReview) &&
-    isArrayOf(value.priorities, isTask) &&
+    isArrayOf(value.priorities, (item): item is TodayTask =>
+      isTask(item) && "mutable" in item && isBoolean(item.mutable)) &&
     isArrayOf(value.agenda, isAgendaItem) &&
     isArrayOf(value.tomorrow, isTask) &&
     (value.reading === null || isReading(value.reading)) &&

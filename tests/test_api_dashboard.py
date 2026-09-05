@@ -9,6 +9,40 @@ def empty_tables():
     return {name: [] for name in DASHBOARD_SHEETS}
 
 
+def test_today_exposes_only_persistent_personal_identities():
+    tables = empty_tables()
+    tables.update({
+        "Tarefas": [
+            {"id": " real-task ", "data": "2026-08-25", "tarefa": "Real"},
+            {"data": "2026-08-25", "tarefa": "Antiga"},
+            {"id": "..", "data": "2026-08-25", "tarefa": "Insegura"},
+        ],
+        "AgendaSemanal": [{"id": "same-id", "dia_semana": "Terça",
+                          "ativo": "Sim", "atividade": "Aula fixa"}],
+        "Rotina": [
+            {"id": " same-id ", "data": "2026-08-25", "atividade": "Rotina real"},
+            {"data": "2026-08-25", "atividade": "Sem ID"},
+        ],
+        "HabitosConfig": [{"id": "habit-1", "nome": "Ler", "ativo": "Sim"}],
+    })
+    before = copy.deepcopy(tables)
+    dashboard = build_today_dashboard(tables, date(2026, 8, 25))
+    assert [(task.id, task.mutable) for task in dashboard.priorities] == [
+        ("real-task", True), ("task-2", False), ("..", False),
+    ]
+    fixed = next(item for item in dashboard.agenda if item.kind == "fixed")
+    custom = next(item for item in dashboard.agenda if item.title == "Rotina real")
+    legacy = next(item for item in dashboard.agenda if item.title == "Sem ID")
+    assert fixed.mutable is False
+    assert custom.source_id == "same-id"
+    assert custom.mutable is True
+    assert legacy.source_id == ""
+    assert legacy.mutable is False
+    assert dashboard.habits[0].config_id == "habit-1"
+    assert dashboard.habits[0].log_id is None
+    assert tables == before
+
+
 def test_dashboard_adapts_current_data_without_mutating_tables():
     tables = empty_tables()
     tables.update(

@@ -22,6 +22,7 @@ type HabitControlsProps = {
   habit: PersonalHabit;
   date: string;
   canMutate: boolean;
+  compact?: boolean;
 };
 
 function CancelArchiveButton({ onCancel }: { onCancel: () => void }) {
@@ -33,7 +34,7 @@ function CancelArchiveButton({ onCancel }: { onCancel: () => void }) {
   );
 }
 
-export function HabitControls({ habit, date, canMutate }: HabitControlsProps) {
+export function HabitControls({ habit, date, canMutate, compact = false }: HabitControlsProps) {
   const [confirmingArchive, setConfirmingArchive] = useState(false);
   const [feedbackSource, setFeedbackSource] = useState<
     "completed" | "archive" | null
@@ -84,7 +85,7 @@ export function HabitControls({ habit, date, canMutate }: HabitControlsProps) {
         </MutationSubmitButton>
       </form>
 
-      {showArchiveConfirmation ? (
+      {!compact && (showArchiveConfirmation ? (
         <div className={styles.deleteConfirmation}>
           <form
             action={archiveAction}
@@ -103,7 +104,7 @@ export function HabitControls({ habit, date, canMutate }: HabitControlsProps) {
         <button type="button" onClick={() => setConfirmingArchive(true)}>
           Arquivar hábito
         </button>
-      )}
+      ))}
 
       <p aria-live="polite" className={styles.inlineMutationMessage}>
         {message}

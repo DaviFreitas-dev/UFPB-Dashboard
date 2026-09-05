@@ -49,6 +49,12 @@ describe("isTodayDashboard", () => {
     expect(isTodayDashboard({ ...dashboard, agenda: [{ id: "sem-campos" }] })).toBe(
       false,
     );
+    expect(isTodayDashboard({ ...dashboard,
+      priorities: [{ ...dashboard.priorities[0], mutable: undefined }],
+    })).toBe(false);
+    expect(isTodayDashboard({ ...dashboard,
+      agenda: [{ ...dashboard.agenda[0], sourceId: undefined }],
+    })).toBe(false);
     expect(
       isTodayDashboard({
         ...dashboard,

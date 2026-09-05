@@ -16,6 +16,7 @@ import { MutationSubmitButton } from "./mutation-submit-button";
 type TaskControlsProps = {
   task: PersonalTask;
   canMutate: boolean;
+  compact?: boolean;
 };
 
 function CancelDeleteButton({ onCancel }: { onCancel: () => void }) {
@@ -28,7 +29,7 @@ function CancelDeleteButton({ onCancel }: { onCancel: () => void }) {
   );
 }
 
-export function TaskControls({ task, canMutate }: TaskControlsProps) {
+export function TaskControls({ task, canMutate, compact = false }: TaskControlsProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [feedbackSource, setFeedbackSource] = useState<
     "state" | "delete" | null
@@ -68,7 +69,7 @@ export function TaskControls({ task, canMutate }: TaskControlsProps) {
         </MutationSubmitButton>
       </form>
 
-      {showDeleteConfirmation ? (
+      {!compact && (showDeleteConfirmation ? (
         <div className={styles.deleteConfirmation}>
           <form
             action={deleteAction}
@@ -86,7 +87,7 @@ export function TaskControls({ task, canMutate }: TaskControlsProps) {
         <button type="button" onClick={() => setConfirmingDelete(true)}>
           Excluir tarefa
         </button>
-      )}
+      ))}
 
       <p aria-live="polite" className={styles.inlineMutationMessage}>
         {message}

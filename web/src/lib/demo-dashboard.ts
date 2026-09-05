@@ -70,12 +70,14 @@ export function createDemoDashboard(reference = new Date()): TodayDashboard {
     priorities: [
       {
         id: "task-1",
+        mutable: false,
         title: "Resolver 30 questões",
         category: "Estudos",
         completed: false,
       },
       {
         id: "task-2",
+        mutable: false,
         title: "Enviar trabalho de História",
         category: "Escola",
         completed: true,
@@ -84,6 +86,9 @@ export function createDemoDashboard(reference = new Date()): TodayDashboard {
     agenda: [
       {
         id: "agenda-1",
+        sourceId: "agenda-1",
+        kind: "fixed",
+        mutable: false,
         time: "14:00",
         title: "Estudo dirigido",
         category: "Estudos",
@@ -91,6 +96,9 @@ export function createDemoDashboard(reference = new Date()): TodayDashboard {
       },
       {
         id: "agenda-2",
+        sourceId: "agenda-2",
+        kind: "custom",
+        mutable: false,
         time: "18:30",
         title: "Academia",
         category: "Atividade",

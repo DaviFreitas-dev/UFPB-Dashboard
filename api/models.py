@@ -59,8 +59,14 @@ class Task(ApiModel):
     completed: bool
 
 
-class AgendaItem(Task):
+class TodayTask(Task):
+    mutable: bool
+
+
+class AgendaItem(TodayTask):
     time: str
+    kind: Literal["fixed", "custom"]
+    source_id: str
 
 
 class Reading(ApiModel):
@@ -94,7 +100,7 @@ class TodayDashboard(ApiModel):
     focus: FocusItem | None
     deadline: Deadline | None
     reviews: list[Review]
-    priorities: list[Task]
+    priorities: list[TodayTask]
     agenda: list[AgendaItem]
     tomorrow: list[Task]
     reading: Reading | None
