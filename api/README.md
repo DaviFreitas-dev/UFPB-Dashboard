@@ -42,10 +42,33 @@ Os endpoints abaixo exigem o cabeçalho `X-Nexo-Token`:
 - `GET /v1/personal?date=AAAA-MM-DD`;
 - `GET /v1/profile`.
 
-`POST /v1/tasks` é a primeira rota de mutação. Ela exige simultaneamente o
-cabeçalho de servidor `X-Nexo-Token` e `NEXO_API_WRITES_ENABLED=true`. Com o
-gate ausente ou `false`, a API devolve o erro seguro `writes_disabled` e não
-grava nada.
+As rotas pessoais da Entrega 2 exigem simultaneamente o cabeçalho de servidor
+`X-Nexo-Token` e `NEXO_API_WRITES_ENABLED=true`. Com o gate ausente ou
+`false`, a API devolve `writes_disabled` antes de validar o corpo ou gravar.
+
+| Recurso | Rotas |
+| --- | --- |
+| Tarefas | `POST /v1/tasks`, `PATCH/DELETE /v1/tasks/{id}` |
+| Rotina por data | `POST /v1/routine-items`, `PATCH/DELETE /v1/routine-items/{id}` |
+| Hábitos | `POST /v1/habits`, `PATCH /v1/habits/{config_id}` |
+| Registro de hábito | `PUT /v1/habit-checkins/{config_id}/{date}` |
+| Leitura | `POST /v1/books`, `PATCH/DELETE /v1/books/{id}` |
+| Atividade física | `POST /v1/activities` |
+
+Criações recebem um UUID estável, reutilizado em tentativas após falha.
+As regras de XP permanecem em Python e usam eventos únicos. Atividades também
+são deduplicadas por data e tipo, incluindo chaves de XP antigas. Livros aceitam
+progresso, conclusão e reabertura. Os corpos e confirmações estão no OpenAPI.
+
+Leituras de hábitos não criam registros. Linhas antigas sem identidade segura
+continuam visíveis, sem controles de alteração por ID. Repetições de atividades
+já concluídas sem ID são confirmadas por data/tipo e retornam `id: null`;
+atividades pendentes sem ID retornam conflito, sem atualização por posição.
+Nenhum backfill foi executado nesta entrega.
+
+`AgendaSemanal` e `AgendaCheckins` permanecem somente leitura; os check-ins
+semanais pertencem à Entrega 3. A ativação do novo escritor é uma etapa separada,
+prevista para a Entrega 4, não uma consequência de instalar estas rotas.
 
 Cada resposta de leitura é montada em memória a partir do mesmo lote de abas.
 `GET /health` não consulta a planilha e permanece disponível para
