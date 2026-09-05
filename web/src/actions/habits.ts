@@ -136,6 +136,8 @@ export async function createHabitAction(
         ? writesDisabledState.message
         : error instanceof NexoApiError && error.code === "ambiguous_api_response"
           ? "Não foi possível confirmar se o hábito foi salvo. Tente novamente."
+          : error instanceof NexoApiError && error.code === "idempotency_conflict"
+            ? "Este formulário já foi enviado com outros dados. Atualize a página e tente novamente."
           : "Não foi possível adicionar o hábito agora.";
     return {
       status: "error",

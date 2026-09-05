@@ -14,6 +14,10 @@ from modules.gamification import award_xp_once, xp_write_lock
 HABIT_LOG_NAMESPACE = uuid.UUID("698cd68b-c9a8-4f34-b527-f6809e2d3f10")
 
 
+class HabitIdConflict(ValueError):
+    pass
+
+
 def _normalized_name(value):
     return " ".join(str(value or "").split())
 
@@ -100,10 +104,18 @@ def add(name, item_id=None):
         raise ValueError("O nome do hábito é obrigatório.")
 
     with xp_write_lock():
+        configs = records("HabitosConfig")
+        requested_id = str(item_id or "").strip()
+        if requested_id and any(
+            str(row.get("id") or "").strip() == requested_id
+            and _name_key(row.get("nome")) != _name_key(name_text)
+            for row in configs
+        ):
+            raise HabitIdConflict("O ID do hábito já existe com outro conteúdo.")
         existing = next(
             (
                 row
-                for row in records("HabitosConfig")
+                for row in configs
                 if _name_key(row.get("nome")) == _name_key(name_text)
             ),
             None,
@@ -200,10 +212,13 @@ def set_completed(config_id, target_date, completed):
 
         target = "Sim" if completed else "Não"
         log_id = str(current.get("id") or "").strip()
+        already_target = _is_yes(current.get("feito")) == bool(completed)
+        if not log_id and already_target and not completed:
+            return _daily_record(config, target_date_text, current), False
+        needs_identity = not log_id
         if not log_id:
             log_id = _deterministic_log_id(normalized_id, target_date_text)
-        already_target = _is_yes(current.get("feito")) == bool(completed)
-        if not already_target:
+        if not already_target or needs_identity:
             persisted_id = str(current.get("id") or "")
             if persisted_id.strip():
                 if not update_record("Habitos", persisted_id, {"feito": target}):
@@ -232,7 +247,7 @@ def set_completed(config_id, target_date, completed):
                 "habito",
                 "Hábito concluído",
             )
-        return confirmed, not already_target
+        return confirmed, not already_target or needs_identity
 
 
 def toggle(config_id, done, target_date=None):

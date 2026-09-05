@@ -10,6 +10,36 @@ CONFIG_ID = "config-1"
 LOG_ID = "0482cb36-ff7f-5c83-8f8d-78acdf6e025f"
 
 
+def test_create_rejects_reused_identity_with_different_name(monkeypatch):
+    rows = [{"id": CONFIG_ID, "nome": "Ler", "ativo": "Sim"}]
+    appended = []
+    monkeypatch.setattr(habits, "records", lambda _name: rows)
+    monkeypatch.setattr(habits, "append_record", lambda *a, **kw: appended.append(a))
+
+    with pytest.raises(ValueError, match="outro conteúdo"):
+        habits.add("Caminhar", item_id=CONFIG_ID)
+    assert appended == []
+
+
+@pytest.mark.parametrize("completed", [False, True])
+def test_legacy_noop_never_confirms_an_unstored_log_id(monkeypatch, completed):
+    config = {"id": CONFIG_ID, "nome": "Ler", "ativo": "Sim"}
+    log = {"data": str(TARGET), "habito": "Ler", "feito": "Sim" if completed else "Não"}
+    writes = []
+    monkeypatch.setattr(habits, "records", lambda name: [config] if name == "HabitosConfig" else [log])
+
+    def write_batch(updates):
+        writes.extend(updates)
+        log.update(dict(zip(("id", "data", "habito", "feito"), updates[0]["values"][0])))
+
+    monkeypatch.setattr(habits, "write_values_batch", write_batch)
+    monkeypatch.setattr(habits, "award_xp_once", lambda *args: 0)
+    confirmed, changed = habits.set_completed(CONFIG_ID, TARGET, completed)
+    assert confirmed["id"] == log.get("id")
+    assert changed is completed
+    assert len(writes) == int(completed)
+
+
 def test_records_for_date_is_pure_and_projects_a_missing_log(monkeypatch):
     tables = {
         "HabitosConfig": [

@@ -28,6 +28,17 @@ def enable_mutations(monkeypatch):
     monkeypatch.setenv("NEXO_API_WRITES_ENABLED", "true")
 
 
+def test_create_returns_conflict_for_reused_id(monkeypatch):
+    enable_mutations(monkeypatch)
+    monkeypatch.setattr(habits, "records", lambda _name: [
+        {"id": CONFIG_ID, "nome": "Ler", "ativo": "Sim"},
+    ])
+    monkeypatch.setattr(habits, "append_record", lambda *a, **kw: pytest.fail("must not duplicate"))
+    response = client.post("/v1/habits", json={"id": CONFIG_ID, "name": "Caminhar"}, headers=HEADERS)
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "idempotency_conflict"
+
+
 def forbid_domain_calls(monkeypatch):
     monkeypatch.setattr(
         habits,

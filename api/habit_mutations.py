@@ -176,6 +176,7 @@ def _log(request, *, resource_id, route, outcome, status_code, started_at):
     response_model_by_alias=True,
     responses={
         401: {"model": MutationErrorResponse},
+        409: {"model": MutationErrorResponse},
         422: {"model": MutationErrorResponse},
         503: {"model": MutationErrorResponse},
     },
@@ -200,6 +201,20 @@ def create_habit(
             reactivated=reactivated,
             habit=_habit(record),
         )
+    except habits.HabitIdConflict as error:
+        _log(
+            request,
+            resource_id=config_id,
+            route=_HABITS_ROUTE,
+            outcome="failure",
+            status_code=409,
+            started_at=started_at,
+        )
+        raise NexoMutationError(
+            409,
+            "idempotency_conflict",
+            "Este formulário já foi enviado com outros dados.",
+        ) from error
     except NexoMutationError as error:
         _log(
             request,

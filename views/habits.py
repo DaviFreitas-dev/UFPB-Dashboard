@@ -13,6 +13,7 @@ def render():
     with st.container(border=True):
         name = st.text_input(
             "Novo hábito",
+            max_chars=80,
             placeholder="Ex.: Ler, estudar, programar...",
         )
 
@@ -48,13 +49,13 @@ def render():
 
         streak_map = streaks([habit["habito"] for habit in habits])
 
-        for habit in habits:
+        for index, habit in enumerate(habits):
             checked = habit["feito"] == "Sim"
             habit_streak = streak_map.get(habit["habito"], 0)
             new_value = st.checkbox(
                 f"{habit['habito']} · 🔥 sequência de {habit_streak} dias",
                 value=checked,
-                key=f"habit_{habit['config_id']}",
+                key=f"habit_{habit['config_id'] or f'legacy_{index}'}",
                 disabled=not bool(habit.get("config_id")),
             )
 
@@ -71,7 +72,7 @@ def render():
             selected = st.selectbox(
                 "Hábito",
                 configs,
-                format_func=lambda item: item["nome"],
+                format_func=lambda item: item.get("nome") or "Hábito sem nome",
             )
             if st.button("Arquivar hábito", use_container_width=True):
                 config_id = str(selected.get("id") or "").strip()
