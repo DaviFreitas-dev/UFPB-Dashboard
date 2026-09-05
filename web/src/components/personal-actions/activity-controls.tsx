@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useLayoutEffect, useRef, useState } from "react";
 import { registerActivityAction } from "@/actions/activity";
 import { initialCreateMutationState } from "@/actions/mutation-state";
 import { ACTIVITY_TYPES } from "@/lib/activity";
@@ -14,7 +14,7 @@ export function ActivityCreateForm({ initialItemId, selectedDate }: {
   const [date, setDate] = useState(selectedDate);
   const [state, action, pending] = useActionState(registerActivityAction, initialCreateMutationState);
   const typeRef = useRef<HTMLSelectElement>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     // React resets native selects after an action, including unsuccessful writes.
     if (!pending && typeRef.current) typeRef.current.value = type;
   }, [pending, type]);
