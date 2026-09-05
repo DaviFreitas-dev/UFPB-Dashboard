@@ -24,6 +24,7 @@ from api.workspace_models import (
     TaskCollection,
 )
 from modules.reading import is_safe_reading_item_id
+from modules.tasks import is_safe_task_id
 
 
 MAX_HABIT_CONFIG_ID_LENGTH = 512
@@ -54,7 +55,7 @@ def _tasks(tables, reference):
                 title=_text(row.get("tarefa"), "Tarefa sem título"),
                 category=_text(row.get("categoria"), "Outro"),
                 completed=_completed(row.get("status")),
-                mutable=bool(persisted_id),
+                mutable=is_safe_task_id(persisted_id),
             )
         )
     return TaskCollection(

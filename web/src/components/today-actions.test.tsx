@@ -37,6 +37,25 @@ function dashboard() {
 }
 beforeEach(() => Object.values(actions).forEach((action) => action.mockReset()));
 
+it("preserva a captura rápida e seu UUID após falha", async () => {
+  actions.createTaskAction.mockResolvedValue({
+    status: "error", message: "Não foi possível adicionar a tarefa agora.",
+    fieldErrors: {}, submittedItemId: taskId, nextItemId: null,
+  });
+  const user = userEvent.setup();
+  render(<TodayDashboard dashboard={dashboard()} source="api" canMutate initialTaskId={taskId} />);
+  await user.click(screen.getByText("Adicionar tarefa", { selector: "summary" }));
+  await user.type(screen.getByLabelText("O que precisa ser feito?"), "Revisar funções");
+  await user.clear(screen.getByLabelText("Categoria"));
+  await user.type(screen.getByLabelText("Categoria"), "Estudo");
+  await user.click(screen.getByRole("button", { name: "Adicionar tarefa" }));
+  expect(await screen.findByText("Não foi possível adicionar a tarefa agora.")).toBeInTheDocument();
+  expect(screen.getByLabelText("O que precisa ser feito?")).toHaveValue("Revisar funções");
+  expect(screen.getByLabelText("Categoria")).toHaveValue("Estudo");
+  await user.click(screen.getByRole("button", { name: "Adicionar tarefa" }));
+  expect(actions.createTaskAction.mock.calls.map((call) => (call[1] as FormData).get("itemId"))).toEqual([taskId, taskId]);
+});
+
 it("reutiliza ações pessoais sem permitir escrita na agenda semanal ou linha sem ID", async () => {
   actions.setTaskCompletedAction.mockResolvedValue({ status: "success", message: "Tarefa concluída." });
   actions.setRoutineItemCompletedAction.mockResolvedValue({ status: "success", message: "Compromisso concluído." });

@@ -98,7 +98,8 @@ def test_set_completed_changes_state_and_awards_xp_once(monkeypatch):
     assert awards == [("task:task-1", 15, "tarefa", "Tarefa concluída")]
 
 
-def test_set_completed_replay_does_not_write_or_award(monkeypatch):
+def test_set_completed_replay_recovers_xp_without_rewriting_task(monkeypatch):
+    awards = []
     monkeypatch.setattr(
         tasks,
         "records",
@@ -112,13 +113,36 @@ def test_set_completed_replay_does_not_write_or_award(monkeypatch):
     monkeypatch.setattr(
         tasks,
         "award_xp_once",
-        lambda *_args: pytest.fail("must not award"),
+        lambda *args: awards.append(args),
     )
 
     record, changed = tasks.set_completed("task-1", True)
 
     assert changed is False
     assert record["status"] == "Concluída"
+    assert awards == [("task:task-1", 15, "tarefa", "Tarefa concluída")]
+
+
+def test_completion_uses_raw_stored_id_and_retries_only_xp_after_failure(monkeypatch):
+    row = {"id": " task-1 ", "status": "Pendente"}
+    updates, awards = [], []
+    monkeypatch.setattr(tasks, "records", lambda _name: [dict(row)])
+    def update(name, raw_id, values):
+        updates.append((name, raw_id, values))
+        row.update(values)
+        return True
+    def award(*args):
+        awards.append(args)
+        if len(awards) == 1:
+            raise RuntimeError("interrupted")
+    monkeypatch.setattr(tasks, "update_record", update)
+    monkeypatch.setattr(tasks, "award_xp_once", award)
+    with pytest.raises(RuntimeError):
+        tasks.set_completed("task-1", True)
+    assert tasks.set_completed("task-1", True)[1] is False
+    assert updates == [("Tarefas", " task-1 ", {"status": "Concluída"})]
+    assert len(awards) == 2
+    assert awards[0] == awards[1]
 
 
 def test_set_completed_reopens_without_awarding_xp(monkeypatch):

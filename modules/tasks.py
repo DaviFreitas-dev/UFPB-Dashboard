@@ -14,6 +14,11 @@ class TaskIdConflict(ValueError):
     pass
 
 
+def is_safe_task_id(value):
+    item_id = str(value or "").strip()
+    return bool(item_id) and len(item_id) <= 512 and item_id not in {".", ".."}
+
+
 def _record_with_id(item_id):
     requested_id = str(item_id).strip()
     if not requested_id:
@@ -91,21 +96,19 @@ def set_completed(item_id, completed):
         return None, False
 
     target = "Concluída" if completed else "Pendente"
-    if current.get("status") == target:
-        return {**current, "status": target}, False
-
-    if not update_record("Tarefas", item_id, {"status": target}):
+    changed = current.get("status") != target
+    if changed and not update_record("Tarefas", current["id"], {"status": target}):
         return None, False
 
     confirmed = {**current, "status": target}
     if completed:
         award_xp_once(
-            f"task:{item_id}",
+            f"task:{str(current['id']).strip()}",
             15,
             "tarefa",
             "Tarefa concluída",
         )
-    return confirmed, True
+    return confirmed, changed
 
 
 def toggle(item_id, done):

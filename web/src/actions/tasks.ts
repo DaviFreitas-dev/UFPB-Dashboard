@@ -11,6 +11,7 @@ import {
   CreateTaskResponseSchema,
   DeleteTaskResponseSchema,
   TaskStateResponseSchema,
+  PersistentTaskIdSchema,
 } from "@/lib/personal-mutation-contracts";
 import { mutationsUiEnabled } from "@/lib/write-policy";
 
@@ -31,7 +32,7 @@ const CreateTaskSchema = z.object({
   date: z.iso.date({ error: "Informe uma data válida." }),
 });
 
-const TaskIdSchema = z.string().trim().min(1).max(80);
+const TaskIdSchema = PersistentTaskIdSchema;
 const TaskStateSchema = z.object({
   id: TaskIdSchema,
   completed: z.enum(["true", "false"]).transform((value) => value === "true"),

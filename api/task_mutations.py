@@ -1,9 +1,10 @@
 import time
 from datetime import date
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
-from pydantic import Field, field_validator
+from fastapi import APIRouter, Depends, Path, Request
+from pydantic import AfterValidator, Field, StringConstraints, field_validator
 
 from api.models import ApiModel
 from api.mutation_audit import log_mutation
@@ -28,6 +29,18 @@ router = APIRouter(
     tags=["tarefas"],
     route_class=MutationApiRoute,
 )
+
+
+def _safe_task_id(value):
+    if not tasks.is_safe_task_id(value):
+        raise ValueError("Identidade insegura.")
+    return value
+
+
+TaskPathId = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=512),
+    AfterValidator(_safe_task_id), Path(),
+]
 
 
 class CreateTaskRequest(ApiModel):
@@ -93,11 +106,11 @@ async def parse_set_task_state_request(
 
 def _created_task(record):
     return CreatedTask(
-        id=str(record["id"]),
+        id=str(record["id"]).strip(),
         date=record["data"],
         title=str(record.get("tarefa") or "Tarefa sem título"),
         category=str(record.get("categoria") or "Outro"),
-        completed=str(record["status"]).lower() in {"concluída", "concluida"},
+        completed=str(record.get("status") or "").strip().lower() in {"concluída", "concluida"},
     )
 
 
@@ -218,7 +231,7 @@ def create_task(
 
 
 @router.patch(
-    "/{task_id}",
+    "/{task_id:path}",
     response_model=SetTaskStateResponse,
     response_model_by_alias=True,
     responses={
@@ -257,7 +270,7 @@ def create_task(
 )
 def set_task_state(
     request: Request,
-    task_id: str,
+    task_id: TaskPathId,
     payload: SetTaskStateRequest = Depends(parse_set_task_state_request),
 ):
     started_at = time.perf_counter()
@@ -320,7 +333,7 @@ def set_task_state(
 
 
 @router.delete(
-    "/{task_id}",
+    "/{task_id:path}",
     response_model=DeleteTaskResponse,
     response_model_by_alias=True,
     responses={
@@ -347,7 +360,7 @@ def set_task_state(
 )
 def delete_task(
     request: Request,
-    task_id: str,
+    task_id: TaskPathId,
     _token=Depends(require_mutation_api_token),
     _writes=Depends(require_api_writes),
 ):

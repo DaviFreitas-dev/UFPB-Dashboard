@@ -20,6 +20,7 @@ from api.models import (
 from api.sheets import read_dashboard_tables
 from modules.config import WEEKDAYS, XP_POR_NIVEL
 from modules.reading import is_safe_reading_item_id
+from modules.tasks import is_safe_task_id
 
 
 def _today():
@@ -206,11 +207,7 @@ def _tasks_for_date(tables, reference):
                 title=_text(row.get("tarefa"), "Tarefa sem título"),
                 category=_text(row.get("categoria"), "Outro"),
                 completed=_completed(row.get("status")),
-                mutable=(
-                    bool(_text(row.get("id")))
-                    and len(_text(row.get("id"))) <= 512
-                    and _text(row.get("id")) not in {".", ".."}
-                ),
+                mutable=is_safe_task_id(row.get("id")),
             )
         )
     return result

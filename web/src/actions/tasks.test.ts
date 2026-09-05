@@ -29,6 +29,24 @@ vi.mock("@/lib/nexo-api", async (importOriginal) => {
 
 const requireAuthorizedSessionMock = vi.mocked(requireAuthorizedSession);
 
+it("confirma tarefas legadas sem impor limites de cadastro na resposta", async () => {
+  const id = "legacy/" + "x".repeat(100);
+  const response = {
+    operationId: "task-request-1", changed: true,
+    task: { id, date: "2026-08-23", title: "a".repeat(200), category: "b".repeat(50), completed: true },
+  };
+  expect(TaskStateResponseSchema.safeParse(response).success).toBe(true);
+  vi.mocked(requestNexoApi).mockResolvedValue(response);
+  const form = taskForm();
+  form.set("id", id);
+  const result = await setTaskCompletedAction(initialInlineMutationState, form);
+  expect(result.status).toBe("success");
+  expect(requestNexoApi).toHaveBeenCalledWith(
+    `/v1/tasks/${encodeURIComponent(id)}`,
+    { method: "PATCH", body: JSON.stringify({ completed: true }) }, TaskStateResponseSchema,
+  );
+});
+
 function taskForm(completed: "true" | "false" = "true") {
   const form = new FormData();
   form.set("id", "task-1");

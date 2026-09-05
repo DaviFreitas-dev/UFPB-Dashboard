@@ -65,6 +65,29 @@ def enable_mutations(monkeypatch):
     monkeypatch.setenv("NEXO_API_WRITES_ENABLED", "true")
 
 
+def test_legacy_task_confirmation_accepts_opaque_id_and_missing_status(monkeypatch):
+    enable_mutations(monkeypatch)
+    record = {"id": " legacy/task ", "data": "2026-08-23"}
+    monkeypatch.setattr(task_mutations.tasks, "set_completed", lambda *_: (record, False))
+    monkeypatch.setattr(task_mutations, "clear_dashboard_cache", lambda: None)
+    response = client.patch("/v1/tasks/legacy/task", json={"completed": False}, headers=HEADERS)
+    assert response.status_code == 200
+    assert response.json()["task"] == {
+        "id": "legacy/task", "date": "2026-08-23", "title": "Tarefa sem título",
+        "category": "Outro", "completed": False,
+    }
+
+
+@pytest.mark.parametrize("method", ["patch", "delete"])
+def test_task_path_rejects_oversized_identity(monkeypatch, method):
+    enable_mutations(monkeypatch)
+    monkeypatch.setattr(task_mutations.tasks, "set_completed", lambda *_: pytest.fail("must not write"))
+    monkeypatch.setattr(task_mutations.tasks, "remove", lambda *_: pytest.fail("must not write"))
+    response = client.request(method, "/v1/tasks/" + "x" * 513,
+                              json={"completed": True} if method == "patch" else None, headers=HEADERS)
+    assert response.status_code == 422
+
+
 def forbid_domain_call(monkeypatch):
     monkeypatch.setattr(
         task_mutations.tasks,
