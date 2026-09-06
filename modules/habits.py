@@ -57,14 +57,30 @@ def _daily_record(config, target_date, log=None):
     }
 
 
-def _log_for(logs, name, target_date):
+def canonical_logs(logs):
+    """Usa o primeiro check-in de cada nome/data sem apagar duplicatas antigas."""
+    result = []
+    seen = set()
+    for row in logs:
+        try:
+            day = date.fromisoformat(str(row.get("data") or "").strip())
+        except ValueError:
+            continue
+        key = (_name_key(row.get("habito")), day)
+        if key not in seen:
+            seen.add(key)
+            result.append(row)
+    return result
+
+
+def log_for_date(logs, name, target_date):
     name_key = _name_key(name)
-    target = str(target_date)
+    target = date.fromisoformat(str(target_date).strip())
     return next(
         (
             row
-            for row in logs
-            if str(row.get("data")) == target
+            for row in canonical_logs(logs)
+            if date.fromisoformat(str(row.get("data")).strip()) == target
             and _name_key(row.get("habito")) == name_key
         ),
         None,
@@ -90,7 +106,7 @@ def records_for_date(target_date):
         if not name or key in seen:
             continue
         seen.add(key)
-        result.append(_daily_record(config, target, _log_for(logs, name, target)))
+        result.append(_daily_record(config, target, log_for_date(logs, name, target)))
     return result
 
 
@@ -171,7 +187,8 @@ def _update_legacy_log(logs, current, log_id, target_date, name, target):
                 "range": f"A{row_number}:D{row_number}",
                 "values": [[log_id, str(target_date), name, target]],
             }
-        ]
+        ],
+        value_input_option="RAW",
     )
 
 
@@ -185,7 +202,7 @@ def set_completed(config_id, target_date, completed):
         target_date_text = str(target_date)
         name = _normalized_name(config.get("nome"))
         logs = records("Habitos")
-        current = _log_for(logs, name, target_date_text)
+        current = log_for_date(logs, name, target_date_text)
         if current is None:
             if not completed:
                 return _daily_record(config, target_date_text), False
@@ -258,7 +275,7 @@ def streaks(habit_names):
     wanted = {_name_key(name): _normalized_name(name) for name in habit_names}
     completed = {key: set() for key in wanted}
 
-    for row in records("Habitos"):
+    for row in canonical_logs(records("Habitos")):
         key = _name_key(row.get("habito"))
         if key not in wanted or not _is_yes(row.get("feito")):
             continue

@@ -23,6 +23,7 @@ from api.workspace_models import (
     ReadingCollection,
     TaskCollection,
 )
+from modules.habits import canonical_logs, log_for_date
 from modules.reading import is_safe_reading_item_id
 from modules.tasks import is_safe_task_id
 
@@ -68,7 +69,7 @@ def _tasks(tables, reference):
 def _habit_streak(rows, name, reference):
     completed_days = {
         day
-        for row in rows
+        for row in canonical_logs(rows)
         if _habit_name_key(row.get("habito")) == _habit_name_key(name)
         and _completed(row.get("feito"))
         and (day := _date(row.get("data"))) is not None
@@ -85,11 +86,6 @@ def _habit_streak(rows, name, reference):
 
 def _habits(tables, reference):
     rows = _rows(tables, "Habitos")
-    logs = {
-        _habit_name_key(row.get("habito")): row
-        for row in rows
-        if _date(row.get("data")) == reference
-    }
     items = []
     seen = set()
     for index, config in enumerate(_rows(tables, "HabitosConfig")):
@@ -99,7 +95,7 @@ def _habits(tables, reference):
         if not name or name.casefold() in seen:
             continue
         seen.add(name.casefold())
-        log = logs.get(_habit_name_key(name))
+        log = log_for_date(rows, name, reference)
         config_id = _text(config.get("id"))
         items.append(
             PersonalHabit(

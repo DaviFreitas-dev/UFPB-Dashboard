@@ -19,6 +19,7 @@ from api.models import (
 )
 from api.sheets import read_dashboard_tables
 from modules.config import WEEKDAYS, XP_POR_NIVEL
+from modules.habits import canonical_logs, log_for_date
 from modules.reading import is_safe_reading_item_id
 from modules.tasks import is_safe_task_id
 
@@ -327,7 +328,7 @@ def _habit_streak(rows, name, reference):
     name_key = " ".join(name.split()).casefold()
     completed_days = {
         day
-        for row in rows
+        for row in canonical_logs(rows)
         if " ".join(_text(row.get("habito")).split()).casefold() == name_key
         and _completed(row.get("feito"))
         and (day := _date(row.get("data"))) is not None
@@ -341,11 +342,7 @@ def _habit_streak(rows, name, reference):
 
 
 def _habits(tables, reference):
-    logs = {
-        " ".join(_text(row.get("habito")).split()).casefold(): row
-        for row in _rows(tables, "Habitos")
-        if _date(row.get("data")) == reference
-    }
+    logs = _rows(tables, "Habitos")
     result = []
     for index, config in enumerate(_rows(tables, "HabitosConfig")):
         if not _equals(config.get("ativo"), "Sim"):
@@ -353,7 +350,7 @@ def _habits(tables, reference):
         name = _text(config.get("nome"))
         if not name:
             continue
-        log = logs.get(" ".join(name.split()).casefold(), {})
+        log = log_for_date(logs, name, reference) or {}
         config_id = _text(config.get("id"))
         result.append(
             Habit(

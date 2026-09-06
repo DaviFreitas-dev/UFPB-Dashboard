@@ -28,7 +28,7 @@ def test_legacy_noop_never_confirms_an_unstored_log_id(monkeypatch, completed):
     writes = []
     monkeypatch.setattr(habits, "records", lambda name: [config] if name == "HabitosConfig" else [log])
 
-    def write_batch(updates):
+    def write_batch(updates, **kwargs):
         writes.extend(updates)
         log.update(dict(zip(("id", "data", "habito", "feito"), updates[0]["values"][0])))
 
@@ -341,3 +341,66 @@ def test_partial_xp_failure_retries_the_same_event_without_a_second_log_write(mo
     assert changed is False
     assert len(writes) == 1
     assert attempts == [f"habit:{LOG_ID}", f"habit:{LOG_ID}"]
+
+
+@pytest.mark.parametrize("first_done", [False, True])
+def test_duplicate_logs_use_the_same_record_for_reads_and_writes(monkeypatch, first_done):
+    from api import dashboard, personal
+
+    logs = [
+        {"id": "first", "data": str(TARGET), "habito": "Ler", "feito": "Sim" if first_done else "Não"},
+        {"id": "second", "data": str(TARGET), "habito": " LER ", "feito": "Não" if first_done else "Sim"},
+    ]
+    tables = {"HabitosConfig": [{"id": CONFIG_ID, "nome": "Ler", "ativo": "Sim"}], "Habitos": logs}
+    writes = []
+    monkeypatch.setattr(habits, "records", lambda name: tables[name])
+    monkeypatch.setattr(habits, "award_xp_once", lambda *args: 0)
+
+    def update_record(sheet, item_id, values):
+        writes.append(item_id)
+        next(row for row in tables[sheet] if row["id"] == item_id).update(values)
+        return True
+
+    monkeypatch.setattr(habits, "update_record", update_record)
+
+    def assert_reads(done):
+        for item in (personal._habits(tables, TARGET).items[0], dashboard._habits(tables, TARGET)[0]):
+            assert item.log_id == "first"
+            assert item.completed is done
+            assert item.streak_days == int(done)
+        assert habits.records_for_date(TARGET)[0]["feito"] == ("Sim" if done else "Não")
+
+    assert_reads(first_done)
+    confirmed, changed = habits.set_completed(CONFIG_ID, TARGET, not first_done)
+    assert confirmed["id"] == "first"
+    assert changed is True
+    assert_reads(not first_done)
+    assert habits.set_completed(CONFIG_ID, TARGET, not first_done)[1] is False
+    assert writes == ["first"]
+    assert len(logs) == 2
+    assert logs[1]["feito"] == ("Não" if first_done else "Sim")
+
+
+def test_legacy_log_writes_formula_like_name_as_raw_text(monkeypatch):
+    from modules import database
+
+    config = {"id": CONFIG_ID, "nome": "=1+1", "ativo": "Sim"}
+    log = {"data": str(TARGET), "habito": "=1+1", "feito": "Não"}
+    requests = []
+
+    class Sheet:
+        row_count = 10
+
+        def values_batch_update(self, body):
+            requests.append(body)
+
+    monkeypatch.setattr(habits, "records", lambda name: [config] if name == "HabitosConfig" else [log])
+    monkeypatch.setattr(database, "get_worksheet", lambda name: Sheet())
+    monkeypatch.setattr(database, "connect_sheet", lambda: Sheet())
+    monkeypatch.setattr(database, "clear_records_cache", lambda name: None)
+    monkeypatch.setattr(habits, "award_xp_once", lambda *args: 0)
+
+    habits.set_completed(CONFIG_ID, TARGET, True)
+
+    assert requests[0]["valueInputOption"] == "RAW"
+    assert requests[0]["data"][0]["values"][0][2] == "=1+1"

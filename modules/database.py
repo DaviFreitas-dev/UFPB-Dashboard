@@ -197,7 +197,7 @@ def append_record(name, values, value_input_option="USER_ENTERED"):
         clear_records_cache(name)
 
 
-def write_values_batch(updates):
+def write_values_batch(updates, value_input_option="USER_ENTERED"):
     """Grava vários intervalos de uma vez e limpa os caches afetados."""
     if not updates:
         return
@@ -239,7 +239,7 @@ def write_values_batch(updates):
 
     connect_sheet().values_batch_update(
         {
-            "valueInputOption": "USER_ENTERED",
+            "valueInputOption": value_input_option,
             "data": data,
         }
     )
