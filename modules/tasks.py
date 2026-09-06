@@ -14,6 +14,25 @@ class TaskIdConflict(ValueError):
     pass
 
 
+def is_safe_task_id(value):
+    item_id = str(value or "").strip()
+    return bool(item_id) and len(item_id) <= 512 and item_id not in {".", ".."}
+
+
+def _record_with_id(item_id):
+    requested_id = str(item_id).strip()
+    if not requested_id:
+        return None
+    return next(
+        (
+            row
+            for row in records("Tarefas")
+            if str(row.get("id") or "").strip() == requested_id
+        ),
+        None,
+    )
+
+
 def records_for_date(target_date):
     target = str(target_date)
     return [
@@ -71,21 +90,33 @@ def add(task, category, target_date=None, item_id=None):
     return expected, True
 
 
-def toggle(item_id, done):
-    updated = update_record(
-        "Tarefas",
-        item_id,
-        {"status": "Concluída" if done else "Pendente"},
-    )
+def set_completed(item_id, completed):
+    current = _record_with_id(item_id)
+    if current is None:
+        return None, False
 
-    if updated and done:
+    target = "Concluída" if completed else "Pendente"
+    changed = current.get("status") != target
+    if changed and not update_record("Tarefas", current["id"], {"status": target}):
+        return None, False
+
+    confirmed = {**current, "status": target}
+    if completed:
         award_xp_once(
-            f"task:{item_id}",
+            f"task:{str(current['id']).strip()}",
             15,
             "tarefa",
             "Tarefa concluída",
         )
+    return confirmed, changed
+
+
+def toggle(item_id, done):
+    return set_completed(item_id, done)
 
 
 def remove(item_id):
-    return delete_record("Tarefas", item_id)
+    current = _record_with_id(item_id)
+    if current is None:
+        return False
+    return delete_record("Tarefas", current["id"])

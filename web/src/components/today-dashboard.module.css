@@ -791,3 +791,12 @@
     animation: none;
   }
 }
+
+.quickCapture { margin-top: 14px; border-top: 1px solid var(--color-border-soft); padding-top: 12px; }
+.quickCapture summary { cursor: pointer; color: var(--color-muted); font-size: 0.72rem; }
+.quickCapture summary:focus-visible { outline: 2px solid var(--color-accent-soft); outline-offset: 4px; }
+.quickCapture > form { grid-template-columns: 1fr; margin-top: 12px; padding: 12px; }
+.rowMain > div, .timelineRow > div > div { margin-top: 8px; justify-content: flex-start; }
+.habitList > div { padding: 8px 0; color: var(--color-muted); font-size: 0.72rem; }
+.habitList > div > svg { margin-right: 7px; vertical-align: middle; }
+.habitList > div > div { margin-top: 7px; justify-content: flex-start; }

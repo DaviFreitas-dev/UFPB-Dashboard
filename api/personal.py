@@ -11,18 +11,37 @@ from api.dashboard import (
     _today,
     _user,
 )
-from api.models import Task
 from api.sheets import read_dashboard_tables
 from api.workspace_models import (
     ActivityCollection,
     HabitCollection,
     PersonalHabit,
+    PersonalTask,
     PersonalWorkspace,
     PhysicalActivity,
     ReadingBook,
     ReadingCollection,
     TaskCollection,
 )
+from modules.habits import canonical_logs, log_for_date
+from modules.reading import is_safe_reading_item_id
+from modules.tasks import is_safe_task_id
+
+
+MAX_HABIT_CONFIG_ID_LENGTH = 512
+
+
+def _safe_habit_config_id(value):
+    config_id = _text(value)
+    return (
+        bool(config_id)
+        and len(config_id) <= MAX_HABIT_CONFIG_ID_LENGTH
+        and config_id not in {".", ".."}
+    )
+
+
+def _habit_name_key(value):
+    return " ".join(_text(value).split()).casefold()
 
 
 def _tasks(tables, reference):
@@ -30,12 +49,14 @@ def _tasks(tables, reference):
     for index, row in enumerate(_rows(tables, "Tarefas")):
         if _date(row.get("data")) != reference:
             continue
+        persisted_id = _text(row.get("id"))
         items.append(
-            Task(
-                id=_row_id(row, "task", index),
+            PersonalTask(
+                id=persisted_id or _row_id(row, "task", index),
                 title=_text(row.get("tarefa"), "Tarefa sem título"),
                 category=_text(row.get("categoria"), "Outro"),
                 completed=_completed(row.get("status")),
+                mutable=is_safe_task_id(persisted_id),
             )
         )
     return TaskCollection(
@@ -48,8 +69,8 @@ def _tasks(tables, reference):
 def _habit_streak(rows, name, reference):
     completed_days = {
         day
-        for row in rows
-        if _text(row.get("habito")) == name
+        for row in canonical_logs(rows)
+        if _habit_name_key(row.get("habito")) == _habit_name_key(name)
         and _completed(row.get("feito"))
         and (day := _date(row.get("data"))) is not None
     }
@@ -65,11 +86,6 @@ def _habit_streak(rows, name, reference):
 
 def _habits(tables, reference):
     rows = _rows(tables, "Habitos")
-    logs = {
-        _text(row.get("habito")): row
-        for row in rows
-        if _date(row.get("data")) == reference
-    }
     items = []
     seen = set()
     for index, config in enumerate(_rows(tables, "HabitosConfig")):
@@ -79,14 +95,16 @@ def _habits(tables, reference):
         if not name or name.casefold() in seen:
             continue
         seen.add(name.casefold())
-        log = logs.get(name)
+        log = log_for_date(rows, name, reference)
+        config_id = _text(config.get("id"))
         items.append(
             PersonalHabit(
-                config_id=_row_id(config, "habit-config", index),
+                config_id=config_id,
                 log_id=_text(log.get("id")) if log and _text(log.get("id")) else None,
                 title=name,
                 completed=_completed(log.get("feito")) if log else False,
                 streak_days=_habit_streak(rows, name, reference),
+                mutable=_safe_habit_config_id(config_id),
             )
         )
     return HabitCollection(
@@ -103,9 +121,10 @@ def _reading(tables):
         total = max(1, _integer(row.get("total_paginas"), 1))
         current = min(current, total)
         target = max(0, _integer(row.get("meta_diaria")))
+        persisted_id = _text(row.get("id"))
         items.append(
             ReadingBook(
-                id=_row_id(row, "book", index),
+                id=persisted_id or _row_id(row, "book", index),
                 title=_text(row.get("titulo"), "Livro sem título"),
                 author=_text(row.get("autor"), "Autor não informado"),
                 current_page=current,
@@ -114,6 +133,7 @@ def _reading(tables):
                 remaining_target=min(target, max(total - current, 0)),
                 status=_text(row.get("status"), "Lendo"),
                 progress=current / total,
+                mutable=is_safe_reading_item_id(persisted_id),
             )
         )
     return ReadingCollection(items=items)

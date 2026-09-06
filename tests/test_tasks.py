@@ -77,3 +77,122 @@ def test_add_rejects_same_id_with_different_content(monkeypatch):
             date(2026, 8, 23),
             item_id="task-stable-id",
         )
+
+
+def test_set_completed_changes_state_and_awards_xp_once(monkeypatch):
+    rows = [{"id": "task-1", "status": "Pendente"}]
+    updates, awards = [], []
+    monkeypatch.setattr(tasks, "records", lambda _name: rows)
+    monkeypatch.setattr(
+        tasks,
+        "update_record",
+        lambda name, item_id, values: updates.append(values) or True,
+    )
+    monkeypatch.setattr(tasks, "award_xp_once", lambda *args: awards.append(args))
+
+    record, changed = tasks.set_completed("task-1", True)
+
+    assert changed is True
+    assert record["status"] == "Concluída"
+    assert updates == [{"status": "Concluída"}]
+    assert awards == [("task:task-1", 15, "tarefa", "Tarefa concluída")]
+
+
+def test_set_completed_replay_recovers_xp_without_rewriting_task(monkeypatch):
+    awards = []
+    monkeypatch.setattr(
+        tasks,
+        "records",
+        lambda _name: [{"id": "task-1", "status": "Concluída"}],
+    )
+    monkeypatch.setattr(
+        tasks,
+        "update_record",
+        lambda *_args: pytest.fail("must not write"),
+    )
+    monkeypatch.setattr(
+        tasks,
+        "award_xp_once",
+        lambda *args: awards.append(args),
+    )
+
+    record, changed = tasks.set_completed("task-1", True)
+
+    assert changed is False
+    assert record["status"] == "Concluída"
+    assert awards == [("task:task-1", 15, "tarefa", "Tarefa concluída")]
+
+
+def test_completion_uses_raw_stored_id_and_retries_only_xp_after_failure(monkeypatch):
+    row = {"id": " task-1 ", "status": "Pendente"}
+    updates, awards = [], []
+    monkeypatch.setattr(tasks, "records", lambda _name: [dict(row)])
+    def update(name, raw_id, values):
+        updates.append((name, raw_id, values))
+        row.update(values)
+        return True
+    def award(*args):
+        awards.append(args)
+        if len(awards) == 1:
+            raise RuntimeError("interrupted")
+    monkeypatch.setattr(tasks, "update_record", update)
+    monkeypatch.setattr(tasks, "award_xp_once", award)
+    with pytest.raises(RuntimeError):
+        tasks.set_completed("task-1", True)
+    assert tasks.set_completed("task-1", True)[1] is False
+    assert updates == [("Tarefas", " task-1 ", {"status": "Concluída"})]
+    assert len(awards) == 2
+    assert awards[0] == awards[1]
+
+
+def test_set_completed_reopens_without_awarding_xp(monkeypatch):
+    updates = []
+    monkeypatch.setattr(
+        tasks,
+        "records",
+        lambda _name: [{"id": "task-1", "status": "Concluída"}],
+    )
+    monkeypatch.setattr(
+        tasks,
+        "update_record",
+        lambda name, item_id, values: updates.append((name, item_id, values))
+        or True,
+    )
+    monkeypatch.setattr(
+        tasks,
+        "award_xp_once",
+        lambda *_args: pytest.fail("reopening must not award XP"),
+    )
+
+    record, changed = tasks.set_completed("task-1", False)
+
+    assert changed is True
+    assert record["status"] == "Pendente"
+    assert updates == [("Tarefas", "task-1", {"status": "Pendente"})]
+
+
+@pytest.mark.parametrize("item_id", ["task-1", "None", ""])
+def test_set_completed_returns_absent_when_id_is_not_persisted(
+    monkeypatch,
+    item_id,
+):
+    monkeypatch.setattr(tasks, "records", lambda _name: [{"status": "Pendente"}])
+    monkeypatch.setattr(
+        tasks,
+        "update_record",
+        lambda *_args: pytest.fail("legacy rows without IDs are not mutable"),
+    )
+
+    assert tasks.set_completed(item_id, True) == (None, False)
+
+
+@pytest.mark.parametrize("item_id", ["None", ""])
+def test_remove_never_targets_a_legacy_row_without_id(monkeypatch, item_id):
+    monkeypatch.setattr(tasks, "records", lambda _name: [{"status": "Pendente"}])
+    monkeypatch.setattr(
+        tasks,
+        "delete_record",
+        lambda *_args: pytest.fail("legacy rows without IDs are not mutable"),
+    )
+
+    assert tasks.remove(item_id) is False

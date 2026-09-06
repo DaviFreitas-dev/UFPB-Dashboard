@@ -3,6 +3,7 @@ import { Check, Circle, ListChecks } from "lucide-react";
 import { ratio } from "@/lib/dashboard";
 import type { PersonalWorkspaceResult } from "@/lib/personal-workspace";
 import { PersonalWorkspaceFrame } from "./personal-workspace-frame";
+import { TaskControls } from "./personal-actions/task-controls";
 import { TaskCreateForm } from "./task-create-form";
 import styles from "./personal-workspace.module.css";
 
@@ -66,6 +67,10 @@ export function TasksWorkspace({
                 <span className={task.completed ? styles.donePill : styles.openPill}>
                   {task.completed ? "Concluída" : "Pendente"}
                 </span>
+                <TaskControls
+                  canMutate={source === "api" && canMutate}
+                  task={task}
+                />
               </article>
             ))}
           </div>

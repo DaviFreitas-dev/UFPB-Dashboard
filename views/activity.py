@@ -33,4 +33,4 @@ def render():
         return
 
     for item in items:
-        st.success(item["tipo"])
+        st.success(item.get("tipo") or "Atividade registrada")

@@ -10,9 +10,9 @@ function isoDate(date: Date): string {
 
 export function createDemoPersonalWorkspace(reference = new Date()): PersonalWorkspace {
   const tasks = [
-    { id: "task-1", title: "Revisar funções", category: "Estudos", completed: true },
-    { id: "task-2", title: "Separar material", category: "Escola", completed: false },
-    { id: "task-3", title: "Organizar a semana", category: "Pessoal", completed: false },
+    { id: "task-1", title: "Revisar funções", category: "Estudos", completed: true, mutable: false },
+    { id: "task-2", title: "Separar material", category: "Escola", completed: false, mutable: false },
+    { id: "task-3", title: "Organizar a semana", category: "Pessoal", completed: false, mutable: false },
   ];
   const habits = [
     {
@@ -21,6 +21,7 @@ export function createDemoPersonalWorkspace(reference = new Date()): PersonalWor
       title: "Ler 20 páginas",
       completed: true,
       streakDays: 6,
+      mutable: false,
     },
     {
       configId: "habit-config-2",
@@ -28,6 +29,7 @@ export function createDemoPersonalWorkspace(reference = new Date()): PersonalWor
       title: "Alongar",
       completed: false,
       streakDays: 3,
+      mutable: false,
     },
     {
       configId: "habit-config-3",
@@ -35,6 +37,7 @@ export function createDemoPersonalWorkspace(reference = new Date()): PersonalWor
       title: "Revisar o dia",
       completed: true,
       streakDays: 9,
+      mutable: false,
     },
   ];
 
@@ -55,6 +58,7 @@ export function createDemoPersonalWorkspace(reference = new Date()): PersonalWor
       items: [
         {
           id: "book-1",
+          mutable: false,
           title: "O homem que calculava",
           author: "Malba Tahan",
           currentPage: 84,
@@ -66,6 +70,7 @@ export function createDemoPersonalWorkspace(reference = new Date()): PersonalWor
         },
         {
           id: "book-2",
+          mutable: false,
           title: "Capitães da Areia",
           author: "Jorge Amado",
           currentPage: 182,

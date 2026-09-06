@@ -4,13 +4,17 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Query, status
 
+from api.activity_mutations import router as activity_mutations_router
 from api.dashboard import load_today_dashboard
+from api.habit_mutations import router as habit_mutations_router
 from api.models import PlanningDashboard, RoutineDashboard, TodayDashboard
 from api.mutations import install_mutation_support
 from api.personal import load_personal_workspace
 from api.planning import load_planning_dashboard
 from api.profile import load_profile_workspace
+from api.reading_mutations import router as reading_mutations_router
 from api.routine import load_routine_dashboard
+from api.routine_mutations import router as routine_mutations_router
 from api.security import require_api_token
 from api.studies import load_study_workspace
 from api.task_mutations import router as task_mutations_router
@@ -28,7 +32,11 @@ app = FastAPI(
     version="0.1.0",
 )
 install_mutation_support(app)
+app.include_router(activity_mutations_router)
 app.include_router(task_mutations_router)
+app.include_router(routine_mutations_router)
+app.include_router(habit_mutations_router)
+app.include_router(reading_mutations_router)
 
 
 @app.get("/health", tags=["sistema"])

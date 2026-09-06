@@ -95,10 +95,14 @@ class StudyWorkspace(ApiModel):
     progress: ProgressSnapshot
 
 
+class PersonalTask(Task):
+    mutable: bool
+
+
 class TaskCollection(ApiModel):
     total: int
     completed: int
-    items: list[Task]
+    items: list[PersonalTask]
 
 
 class PersonalHabit(ApiModel):
@@ -107,6 +111,7 @@ class PersonalHabit(ApiModel):
     title: str
     completed: bool
     streak_days: int
+    mutable: bool
 
 
 class HabitCollection(ApiModel):
@@ -125,6 +130,7 @@ class ReadingBook(ApiModel):
     remaining_target: int
     status: str
     progress: float
+    mutable: bool
 
 
 class ReadingCollection(ApiModel):

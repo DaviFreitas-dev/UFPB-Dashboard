@@ -9,6 +9,40 @@ def empty_tables():
     return {name: [] for name in DASHBOARD_SHEETS}
 
 
+def test_today_exposes_only_persistent_personal_identities():
+    tables = empty_tables()
+    tables.update({
+        "Tarefas": [
+            {"id": " real-task ", "data": "2026-08-25", "tarefa": "Real"},
+            {"data": "2026-08-25", "tarefa": "Antiga"},
+            {"id": "..", "data": "2026-08-25", "tarefa": "Insegura"},
+        ],
+        "AgendaSemanal": [{"id": "same-id", "dia_semana": "Terça",
+                          "ativo": "Sim", "atividade": "Aula fixa"}],
+        "Rotina": [
+            {"id": " same-id ", "data": "2026-08-25", "atividade": "Rotina real"},
+            {"data": "2026-08-25", "atividade": "Sem ID"},
+        ],
+        "HabitosConfig": [{"id": "habit-1", "nome": "Ler", "ativo": "Sim"}],
+    })
+    before = copy.deepcopy(tables)
+    dashboard = build_today_dashboard(tables, date(2026, 8, 25))
+    assert [(task.id, task.mutable) for task in dashboard.priorities] == [
+        ("real-task", True), ("task-2", False), ("..", False),
+    ]
+    fixed = next(item for item in dashboard.agenda if item.kind == "fixed")
+    custom = next(item for item in dashboard.agenda if item.title == "Rotina real")
+    legacy = next(item for item in dashboard.agenda if item.title == "Sem ID")
+    assert fixed.mutable is False
+    assert custom.source_id == "same-id"
+    assert custom.mutable is True
+    assert legacy.source_id == ""
+    assert legacy.mutable is False
+    assert dashboard.habits[0].config_id == "habit-1"
+    assert dashboard.habits[0].log_id is None
+    assert tables == before
+
+
 def test_dashboard_adapts_current_data_without_mutating_tables():
     tables = empty_tables()
     tables.update(
@@ -157,7 +191,24 @@ def test_dashboard_adapts_current_data_without_mutating_tables():
     assert payload["deadline"]["kind"] == "BOSS"
     assert payload["agenda"][0]["completed"] is True
     assert payload["agenda"][1]["title"] == "Academia"
-    assert payload["habits"][-1]["completed"] is False
+    assert payload["habits"] == [
+        {
+            "configId": "hc1",
+            "logId": "h1",
+            "title": "Ler 20 páginas",
+            "completed": True,
+            "streakDays": 1,
+            "mutable": True,
+        },
+        {
+            "configId": "hc2",
+            "logId": None,
+            "title": "Alongar",
+            "completed": False,
+            "streakDays": 0,
+            "mutable": True,
+        },
+    ]
     assert payload["physicalActivity"] == "Treino de força"
     assert payload["activity"][1]["minutes"] == 60
 
@@ -189,4 +240,38 @@ def test_dashboard_tolerates_incomplete_legacy_rows():
     assert payload["user"]["xp"] == 0
     assert payload["priorities"][0]["title"] == "Tarefa sem título"
     assert payload["reading"]["totalPages"] == 1
+    assert payload["reading"]["id"] == "book-1"
+    assert payload["reading"]["mutable"] is False
     assert payload["physicalActivity"] is None
+
+
+def test_dashboard_keeps_a_habit_without_persistent_config_id_read_only():
+    tables = empty_tables()
+    tables["HabitosConfig"] = [
+        {"nome": "Legado", "ativo": "Sim"},
+        {"id": "i" * 513, "nome": "Identidade insegura", "ativo": "Sim"},
+    ]
+
+    payload = build_today_dashboard(
+        tables,
+        date(2026, 8, 22),
+    ).model_dump(by_alias=True)
+
+    assert payload["habits"] == [
+        {
+            "configId": "",
+            "logId": None,
+            "title": "Legado",
+            "completed": False,
+            "streakDays": 0,
+            "mutable": False,
+        },
+        {
+            "configId": "i" * 513,
+            "logId": None,
+            "title": "Identidade insegura",
+            "completed": False,
+            "streakDays": 0,
+            "mutable": False,
+        },
+    ]

@@ -124,6 +124,84 @@
   margin-bottom: 32px;
 }
 
+.createForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px auto;
+  gap: 14px;
+  align-items: end;
+  padding: 18px;
+  margin-bottom: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.createForm .sectionHeading {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
+.createForm label {
+  display: grid;
+  gap: 7px;
+  color: var(--color-muted);
+  font-size: 0.64rem;
+}
+
+.createForm input {
+  min-height: 40px;
+  padding: 0 11px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+}
+
+.createForm button,
+.routineControls button {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
+  cursor: pointer;
+}
+
+.createForm button:focus-visible,
+.routineControls button:focus-visible {
+  outline: 2px solid var(--color-accent-soft);
+  outline-offset: 2px;
+}
+
+.createForm button:disabled,
+.routineControls button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.createForm small {
+  color: #d99a9a;
+}
+
+.formMessage {
+  grid-column: 1 / -1;
+  min-height: 1em;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.62rem;
+}
+
+.writesUnavailable {
+  padding: 11px 14px;
+  margin: 0 0 28px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 9px;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  font-size: 0.66rem;
+}
+
 .progressCard,
 .nextCard {
   min-height: 164px;
@@ -360,6 +438,47 @@
   font-size: 0.6rem;
 }
 
+.routineControls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.routineControls form,
+.deleteConfirmation,
+.deleteConfirmation form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.routineControls button {
+  min-height: 30px;
+  font-size: 0.58rem;
+}
+
+.deleteConfirmation span {
+  color: #d8a6a6;
+  font-size: 0.58rem;
+}
+
+.inlineMutationMessage {
+  width: 100%;
+  min-height: 1em;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.58rem;
+}
+
+.readOnlyMessage {
+  margin-top: 8px !important;
+  color: var(--color-muted-2) !important;
+  font-size: 0.58rem !important;
+}
+
 .doneLabel {
   padding: 4px 7px;
   border-radius: 999px;
@@ -478,6 +597,15 @@
 
   .sideColumn {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .createForm {
+    grid-template-columns: 1fr;
+  }
+
+  .createForm .sectionHeading,
+  .formMessage {
+    grid-column: 1;
   }
 }
 

@@ -5,6 +5,7 @@ export type PersonalTask = {
   title: string;
   category: string;
   completed: boolean;
+  mutable: boolean;
 };
 
 export type PersonalHabit = {
@@ -13,10 +14,12 @@ export type PersonalHabit = {
   title: string;
   completed: boolean;
   streakDays: number;
+  mutable: boolean;
 };
 
 export type PersonalReading = {
   id: string;
+  mutable: boolean;
   title: string;
   author: string;
   currentPage: number;
@@ -75,7 +78,8 @@ function isPersonalTask(value: unknown): value is PersonalTask {
     isString(value.id) &&
     isString(value.title) &&
     isString(value.category) &&
-    isBoolean(value.completed)
+    isBoolean(value.completed) &&
+    isBoolean(value.mutable)
   );
 }
 
@@ -86,7 +90,8 @@ function isPersonalHabit(value: unknown): value is PersonalHabit {
     (value.logId === null || isString(value.logId)) &&
     isString(value.title) &&
     isBoolean(value.completed) &&
-    isNumber(value.streakDays)
+    isNumber(value.streakDays) &&
+    isBoolean(value.mutable)
   );
 }
 
@@ -94,6 +99,7 @@ function isPersonalReading(value: unknown): value is PersonalReading {
   return (
     isRecord(value) &&
     isString(value.id) &&
+    isBoolean(value.mutable) &&
     isString(value.title) &&
     isString(value.author) &&
     isNumber(value.currentPage) &&

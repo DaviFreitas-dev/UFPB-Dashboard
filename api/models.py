@@ -59,22 +59,33 @@ class Task(ApiModel):
     completed: bool
 
 
-class AgendaItem(Task):
+class TodayTask(Task):
+    mutable: bool
+
+
+class AgendaItem(TodayTask):
     time: str
+    kind: Literal["fixed", "custom"]
+    source_id: str
 
 
 class Reading(ApiModel):
+    id: str
     title: str
     author: str
     current_page: int
     total_pages: int
     daily_target: int
+    mutable: bool
 
 
 class Habit(ApiModel):
-    id: str
+    config_id: str
+    log_id: str | None
     title: str
     completed: bool
+    streak_days: int
+    mutable: bool
 
 
 class ActivityDay(ApiModel):
@@ -89,7 +100,7 @@ class TodayDashboard(ApiModel):
     focus: FocusItem | None
     deadline: Deadline | None
     reviews: list[Review]
-    priorities: list[Task]
+    priorities: list[TodayTask]
     agenda: list[AgendaItem]
     tomorrow: list[Task]
     reading: Reading | None
@@ -161,11 +172,13 @@ class PlanningDashboard(ApiModel):
 
 class RoutineItem(ApiModel):
     id: str
+    source_id: str
     time: str
     title: str
     category: str
     kind: Literal["fixed", "custom"]
     completed: bool
+    mutable: bool
 
 
 class RoutineDashboard(ApiModel):

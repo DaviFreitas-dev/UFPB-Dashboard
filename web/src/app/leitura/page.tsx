@@ -1,7 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { AppShell } from "@/components/app-shell";
 import { ReadingWorkspace } from "@/components/reading-workspace";
 import { normalizeRoutineDate } from "@/lib/routine";
 import { loadPersonalWorkspace } from "@/lib/personal-workspace-source";
+import { mutationsUiEnabled } from "@/lib/write-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +17,9 @@ export default async function ReadingPage({ searchParams }: ReadingPageProps) {
 
   return (
     <AppShell currentPath="/leitura" user={result.workspace.user}>
-      <ReadingWorkspace {...result} />
+      <ReadingWorkspace {...result}
+        canMutate={result.source === "api" && mutationsUiEnabled()}
+        initialItemId={randomUUID()} />
     </AppShell>
   );
 }

@@ -1,12 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useState } from "react";
 
-import { createTaskAction } from "@/app/tarefas/actions";
+import { createTaskAction } from "@/actions/tasks";
 import {
-  initialCreateTaskState,
-  type CreateTaskState,
-} from "@/app/tarefas/task-create-state";
+  initialCreateMutationState,
+  type CreateMutationState,
+} from "@/actions/mutation-state";
 
 import styles from "./personal-workspace.module.css";
 
@@ -17,7 +17,7 @@ type TaskCreateFormProps = {
 
 export function resolveItemIdAfterAction(
   initialItemId: string,
-  state: CreateTaskState,
+  state: CreateMutationState,
 ): string {
   if (state.status === "success" && state.nextItemId) {
     return state.nextItemId;
@@ -29,21 +29,23 @@ export function TaskCreateForm({
   initialItemId,
   selectedDate,
 }: TaskCreateFormProps) {
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("Geral");
   const [state, action, pending] = useActionState(
-    createTaskAction,
-    initialCreateTaskState,
+    async (previous: CreateMutationState, data: FormData) => {
+      const result = await createTaskAction(previous, data);
+      if (result.status === "success") {
+        setTitle("");
+        setCategory("Geral");
+      }
+      return result;
+    },
+    initialCreateMutationState,
   );
-  const formRef = useRef<HTMLFormElement>(null);
   const itemId = resolveItemIdAfterAction(initialItemId, state);
 
-  useEffect(() => {
-    if (state.status === "success") {
-      formRef.current?.reset();
-    }
-  }, [state.status, state.submittedItemId]);
-
   return (
-    <form action={action} className={styles.createForm} ref={formRef}>
+    <form action={action} className={styles.createForm}>
       <div className={styles.sectionHeading}>
         <h2>Nova tarefa</h2>
       </div>
@@ -56,6 +58,8 @@ export function TaskCreateForm({
           disabled={pending}
           maxLength={160}
           name="title"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
           required
         />
         {state.fieldErrors.title?.map((error) => (
@@ -66,7 +70,8 @@ export function TaskCreateForm({
         <span>Categoria</span>
         <input
           aria-invalid={Boolean(state.fieldErrors.category?.length)}
-          defaultValue="Geral"
+          value={category}
+          onChange={(event) => setCategory(event.target.value)}
           disabled={pending}
           maxLength={40}
           name="category"

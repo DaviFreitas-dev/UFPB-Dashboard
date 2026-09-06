@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
+import "@testing-library/jest-dom/vitest";
 import { vi } from "vitest";
 
 Object.assign(globalThis, { AsyncLocalStorage });

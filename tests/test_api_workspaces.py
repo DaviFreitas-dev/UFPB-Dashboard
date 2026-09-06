@@ -194,6 +194,12 @@ def test_personal_workspace_projects_daily_items_without_creating_logs():
                     "status": "Concluída",
                 },
                 {"id": "t2", "data": "2026-08-22", "status": "Pendente"},
+                {
+                    "data": "2026-08-22",
+                    "tarefa": "Tarefa legada",
+                    "categoria": "Pessoal",
+                    "status": "Pendente",
+                },
             ],
             "HabitosConfig": [
                 {"id": "hc1", "nome": "Ler", "ativo": "Sim"},
@@ -219,6 +225,7 @@ def test_personal_workspace_projects_daily_items_without_creating_logs():
             "Atividade": [
                 {"id": "a1", "data": "2026-08-22", "tipo": "Corrida", "feito": "Sim"},
                 {"id": "a2", "data": "2026-08-22", "feito": "Sim"},
+                {"data": "2026-08-22", "tipo": "Alongamento", "feito": "Sim"},
             ],
         }
     )
@@ -230,9 +237,18 @@ def test_personal_workspace_projects_daily_items_without_creating_logs():
     ).model_dump(by_alias=True)
 
     assert tables == original
-    assert payload["tasks"]["total"] == 2
+    assert payload["tasks"]["total"] == 3
     assert payload["tasks"]["completed"] == 1
     assert payload["tasks"]["items"][1]["title"] == "Tarefa sem título"
+    assert payload["tasks"]["items"][0]["mutable"] is True
+    assert payload["tasks"]["items"][1]["mutable"] is True
+    assert payload["tasks"]["items"][2] == {
+        "id": "task-3",
+        "title": "Tarefa legada",
+        "category": "Pessoal",
+        "completed": False,
+        "mutable": False,
+    }
     assert payload["habits"]["items"] == [
         {
             "configId": "hc1",
@@ -240,6 +256,7 @@ def test_personal_workspace_projects_daily_items_without_creating_logs():
             "title": "Ler",
             "completed": True,
             "streakDays": 3,
+            "mutable": True,
         },
         {
             "configId": "hc2",
@@ -247,12 +264,15 @@ def test_personal_workspace_projects_daily_items_without_creating_logs():
             "title": "Alongar",
             "completed": False,
             "streakDays": 0,
+            "mutable": True,
         },
     ]
     assert payload["reading"]["items"][0]["progress"] == 0.5
     assert payload["reading"]["items"][0]["remainingTarget"] == 20
+    assert payload["reading"]["items"][0]["mutable"] is True
     assert payload["activity"]["items"] == [
-        {"id": "a1", "type": "Corrida", "completed": True}
+        {"id": "a1", "type": "Corrida", "completed": True},
+        {"id": "activity-3", "type": "Alongamento", "completed": True},
     ]
 
 

@@ -13,11 +13,15 @@ from api.models import (
     Reading,
     Review,
     Task,
+    TodayTask,
     TodayDashboard,
     WeeklyGoal,
 )
 from api.sheets import read_dashboard_tables
 from modules.config import WEEKDAYS, XP_POR_NIVEL
+from modules.habits import canonical_logs, log_for_date
+from modules.reading import is_safe_reading_item_id
+from modules.tasks import is_safe_task_id
 
 
 def _today():
@@ -199,11 +203,12 @@ def _tasks_for_date(tables, reference):
         if _date(row.get("data")) != reference:
             continue
         result.append(
-            Task(
+            TodayTask(
                 id=_row_id(row, "task", index),
                 title=_text(row.get("tarefa"), "Tarefa sem título"),
                 category=_text(row.get("categoria"), "Outro"),
                 completed=_completed(row.get("status")),
+                mutable=is_safe_task_id(row.get("id")),
             )
         )
     return result
@@ -231,6 +236,9 @@ def _agenda(tables, reference):
                 title=_text(row.get("atividade"), "Atividade sem título"),
                 category=_text(row.get("categoria"), "Agenda"),
                 completed=_completed(checkins.get(item_id, {}).get("status")),
+                kind="fixed",
+                source_id=_text(row.get("id")),
+                mutable=False,
             )
         )
 
@@ -244,6 +252,13 @@ def _agenda(tables, reference):
                 title=_text(row.get("atividade"), "Atividade sem título"),
                 category="Rotina",
                 completed=_completed(row.get("status")),
+                kind="custom",
+                source_id=_text(row.get("id")),
+                mutable=(
+                    bool(_text(row.get("id")))
+                    and len(_text(row.get("id"))) <= 512
+                    and _text(row.get("id")) not in {".", ".."}
+                ),
             )
         )
     return sorted(agenda, key=lambda item: (item.time, item.id))
@@ -286,31 +301,48 @@ def _deadline(tables):
 
 
 def _reading(tables):
-    row = next(
+    indexed_row = next(
         (
-            item
-            for item in _rows(tables, "Leitura")
+            (index, item)
+            for index, item in enumerate(_rows(tables, "Leitura"))
             if _equals(item.get("status"), "Lendo")
         ),
         None,
     )
-    if row is None:
+    if indexed_row is None:
         return None
+    index, row = indexed_row
+    persisted_id = _text(row.get("id"))
     return Reading(
+        id=persisted_id or _row_id(row, "book", index),
         title=_text(row.get("titulo"), "Livro sem título"),
         author=_text(row.get("autor"), "Autor não informado"),
         current_page=max(0, _integer(row.get("pagina_atual"))),
         total_pages=max(1, _integer(row.get("total_paginas"), 1)),
         daily_target=max(0, _integer(row.get("meta_diaria"))),
+        mutable=is_safe_reading_item_id(persisted_id),
     )
 
 
-def _habits(tables, reference):
-    logs = {
-        _text(row.get("habito")): row
-        for row in _rows(tables, "Habitos")
-        if _date(row.get("data")) == reference
+def _habit_streak(rows, name, reference):
+    name_key = " ".join(name.split()).casefold()
+    completed_days = {
+        day
+        for row in canonical_logs(rows)
+        if " ".join(_text(row.get("habito")).split()).casefold() == name_key
+        and _completed(row.get("feito"))
+        and (day := _date(row.get("data"))) is not None
     }
+    cursor = reference if reference in completed_days else reference - timedelta(days=1)
+    count = 0
+    while cursor in completed_days:
+        count += 1
+        cursor -= timedelta(days=1)
+    return count
+
+
+def _habits(tables, reference):
+    logs = _rows(tables, "Habitos")
     result = []
     for index, config in enumerate(_rows(tables, "HabitosConfig")):
         if not _equals(config.get("ativo"), "Sim"):
@@ -318,12 +350,24 @@ def _habits(tables, reference):
         name = _text(config.get("nome"))
         if not name:
             continue
-        log = logs.get(name, {})
+        log = log_for_date(logs, name, reference) or {}
+        config_id = _text(config.get("id"))
         result.append(
             Habit(
-                id=_text(log.get("id"), _row_id(config, "habit", index)),
+                config_id=config_id,
+                log_id=_text(log.get("id")) or None,
                 title=name,
                 completed=_completed(log.get("feito")),
+                streak_days=_habit_streak(
+                    _rows(tables, "Habitos"),
+                    name,
+                    reference,
+                ),
+                mutable=(
+                    bool(config_id)
+                    and len(config_id) <= 512
+                    and config_id not in {".", ".."}
+                ),
             )
         )
     return result

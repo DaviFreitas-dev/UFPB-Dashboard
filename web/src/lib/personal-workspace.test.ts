@@ -17,7 +17,13 @@ const workspace = {
     total: 2,
     completed: 1,
     items: [
-      { id: "task-1", title: "Revisar funções", category: "Estudos", completed: true },
+      {
+        id: "task-1",
+        title: "Revisar funções",
+        category: "Estudos",
+        completed: true,
+        mutable: true,
+      },
     ],
   },
   habits: {
@@ -30,6 +36,7 @@ const workspace = {
         title: "Ler",
         completed: false,
         streakDays: 4,
+        mutable: true,
       },
     ],
   },
@@ -45,6 +52,7 @@ const workspace = {
         remainingTarget: 20,
         status: "Lendo",
         progress: 0.35,
+        mutable: true,
       },
     ],
   },
@@ -70,6 +78,30 @@ describe("personal workspace contract", () => {
     ).toBe(false);
   });
 
+  it("recusa um hábito sem mutabilidade persistente explícita", () => {
+    expect(
+      isPersonalWorkspace({
+        ...workspace,
+        habits: {
+          ...workspace.habits,
+          items: [{ ...workspace.habits.items[0], mutable: undefined }],
+        },
+      }),
+    ).toBe(false);
+  });
+
+  it("recusa uma tarefa sem indicação explícita de mutabilidade", () => {
+    expect(
+      isPersonalWorkspace({
+        ...workspace,
+        tasks: {
+          ...workspace.tasks,
+          items: [{ ...workspace.tasks.items[0], mutable: undefined }],
+        },
+      }),
+    ).toBe(false);
+  });
+
   it("recusa progresso de leitura que não seja numérico", () => {
     expect(
       isPersonalWorkspace({
@@ -79,5 +111,12 @@ describe("personal workspace contract", () => {
         },
       }),
     ).toBe(false);
+  });
+
+  it("recusa leitura sem mutabilidade explícita", () => {
+    expect(isPersonalWorkspace({
+      ...workspace,
+      reading: { items: [{ ...workspace.reading.items[0], mutable: undefined }] },
+    })).toBe(false);
   });
 });
